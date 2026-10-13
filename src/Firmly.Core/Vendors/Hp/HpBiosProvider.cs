@@ -39,8 +39,12 @@ public sealed class HpBiosProvider : IFirmwareProvider
             {
                 using (obj)
                 {
+                    // The BIOS reports a nameless placeholder instance; skip it.
+                    if (obj["Name"] is not string name || name.Length == 0)
+                        continue;
+
                     settings.Add(new FirmwareSetting(
-                        Name: (string)obj["Name"],
+                        Name: name,
                         Kind: FirmwareSettingKind.Enumeration,
                         CurrentValue: (string?)obj["CurrentValue"] ?? "",
                         PossibleValues: (string[]?)obj["PossibleValues"] ?? [],
