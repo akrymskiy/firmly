@@ -11,5 +11,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Firmly.Core.Tests/Firmly.Core.Tests.csproj" />
+    <Project Path="tests/Firmly.Service.Tests/Firmly.Service.Tests.csproj" />
   </Folder>
 </Solution>

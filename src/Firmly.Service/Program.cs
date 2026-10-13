@@ -17,7 +17,11 @@ builder.Services.AddWindowsService(options => options.ServiceName = "Firmly");
 builder.Services.AddSingleton<IFirmwareProvider, HpBiosProvider>();
 builder.Services.AddSingleton<FirmwareProviderResolver>();
 
-builder.Services.AddHostedService<Worker>();
+builder.Services.AddSingleton(sp => new RequestHandler(
+    sp.GetRequiredService<ILogger<RequestHandler>>(),
+    sp.GetRequiredService<FirmwareProviderResolver>(),
+    MachinePolicy.RequireAdminForAllChanges));
+builder.Services.AddHostedService<PipeServer>();
 
 var host = builder.Build();
 host.Run();

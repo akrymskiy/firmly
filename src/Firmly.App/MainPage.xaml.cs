@@ -16,5 +16,6 @@ public sealed partial class MainPage : Page
     public MainPage()
     {
         InitializeComponent();
+        Loaded += (_, _) => ViewModel.RefreshCommand.Execute(null);
     }
 }

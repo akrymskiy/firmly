@@ -18,6 +18,14 @@ public sealed class FirmwareGateway(IFirmwareProvider provider, bool requireAdmi
     public bool CanChange(string name, FirmwareCaller caller) =>
         provider.Policy.IsWritable(name) && (caller.IsAdministrator || !RequiresAdmin(name));
 
+    /// <summary>What <paramref name="caller"/> may do with <paramref name="setting"/>, for showing it in the app.</summary>
+    public FirmwareChangeAccess GetChangeAccess(FirmwareSetting setting, FirmwareCaller caller) =>
+        !provider.Policy.IsWritable(setting.Name) || setting.IsReadOnly || setting.Kind != FirmwareSettingKind.Enumeration
+            ? FirmwareChangeAccess.ReadOnly
+            : CanChange(setting.Name, caller)
+                ? FirmwareChangeAccess.Allowed
+                : FirmwareChangeAccess.AdministratorRequired;
+
     /// <returns>The setting as read back from firmware after the change.</returns>
     /// <exception cref="FirmwareAccessDeniedException">Only administrators may change this setting.</exception>
     /// <exception cref="FirmwarePolicyException">The change is not allowed.</exception>

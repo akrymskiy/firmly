@@ -115,4 +115,26 @@ public class FirmwareGatewayTests
         Assert.Equal(userCan, gateway.CanChange(name, User));
         Assert.Equal(adminCan, gateway.CanChange(name, Admin));
     }
+
+    [Theory]
+    [InlineData("Battery Health Manager", false, FirmwareChangeAccess.Allowed)]
+    [InlineData("Battery Health Manager", true, FirmwareChangeAccess.AdministratorRequired)]
+    [InlineData("Asset Tracking", false, FirmwareChangeAccess.AdministratorRequired)]
+    [InlineData("Fast Charge", false, FirmwareChangeAccess.ReadOnly)]
+    public void GetChangeAccess_ForStandardUser(string name, bool lockdown, FirmwareChangeAccess expected)
+    {
+        var gateway = new FirmwareGateway(CreateProvider(), lockdown);
+        var setting = gateway.GetSettings().Single(s => s.Name == name);
+
+        Assert.Equal(expected, gateway.GetChangeAccess(setting, User));
+    }
+
+    [Fact]
+    public void GetChangeAccess_IsReadOnly_WhenFirmwareMarksSettingReadOnly()
+    {
+        var gateway = new FirmwareGateway(CreateProvider());
+        var setting = gateway.GetSettings().Single(s => s.Name == "Battery Health Manager") with { IsReadOnly = true };
+
+        Assert.Equal(FirmwareChangeAccess.ReadOnly, gateway.GetChangeAccess(setting, Admin));
+    }
 }

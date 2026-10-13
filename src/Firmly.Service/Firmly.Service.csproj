@@ -10,6 +10,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Firmly.Service.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Firmly.Core\Firmly.Core.csproj" />
     <ProjectReference Include="..\Firmly.Ipc\Firmly.Ipc.csproj" />
   </ItemGroup>
