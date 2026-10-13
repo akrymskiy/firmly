@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Firmly.App (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Firmly.App (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

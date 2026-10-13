@@ -1,0 +1,26 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        platform: [x64, ARM64]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Build
+        run: dotnet build Firmly.slnx -c Release -p:Platform=${{ matrix.platform }}
+
+      - name: Test
+        if: matrix.platform == 'x64'
+        run: dotnet test --solution Firmly.slnx -c Release -p:Platform=x64 --no-build
