@@ -2,6 +2,14 @@ using Firmly.Core;
 using Firmly.Core.Vendors.Hp;
 using Firmly.Service;
 
+#if DEBUG
+// Developer commands for testing against real hardware from an elevated terminal:
+//   Firmly.Service --dev-get
+//   Firmly.Service --dev-set "<setting>" "<value>"
+if (args is ["--dev-get"] or ["--dev-set", _, _])
+    return DevCommands.Run(args, new FirmwareProviderResolver([new HpBiosProvider()]));
+#endif
+
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddWindowsService(options => options.ServiceName = "Firmly");
 
@@ -13,3 +21,4 @@ builder.Services.AddHostedService<Worker>();
 
 var host = builder.Build();
 host.Run();
+return 0;

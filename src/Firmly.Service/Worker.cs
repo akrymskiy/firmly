@@ -17,8 +17,8 @@ public class Worker(ILogger<Worker> logger, FirmwareProviderResolver resolver) :
 
         try
         {
-            var settings = provider.GetSettings();
-            logger.LogInformation("{Vendor} firmware interface detected with {Count} settings.", provider.Vendor, settings.Count);
+            var settings = new FirmwareGateway(provider).GetSettings();
+            logger.LogInformation("{Vendor} firmware interface detected; {Count} settings exposed.", provider.Vendor, settings.Count);
         }
         catch (UnauthorizedAccessException)
         {

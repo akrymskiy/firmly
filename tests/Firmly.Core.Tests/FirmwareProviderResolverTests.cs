@@ -23,11 +23,4 @@ public class FirmwareProviderResolverTests
 
         Assert.Null(resolver.Resolve());
     }
-
-    private sealed class FakeProvider(string vendor, bool supported) : IFirmwareProvider
-    {
-        public string Vendor => vendor;
-        public bool IsSupported() => supported;
-        public IReadOnlyList<FirmwareSetting> GetSettings() => [];
-    }
 }
