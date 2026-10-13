@@ -16,6 +16,10 @@ public sealed class FirmwareGateway(IFirmwareProvider provider)
     /// <exception cref="FirmwareWriteException">The firmware rejected the change, or did not apply it.</exception>
     public FirmwareSetting SetSetting(string name, string value, string? biosPassword = null)
     {
+        // Reject before touching firmware at all.
+        if (!provider.Policy.IsWritable(name))
+            throw new FirmwarePolicyException($"'{name}' is not on the write allowlist.");
+
         var current = Find(name)
             ?? throw new FirmwarePolicyException($"'{name}' is not available on this machine.");
 

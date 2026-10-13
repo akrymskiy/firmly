@@ -51,7 +51,8 @@ public class FirmwareGatewayTests
         var provider = CreateProvider();
         var gateway = new FirmwareGateway(provider);
 
-        Assert.Throws<FirmwarePolicyException>(() => gateway.SetSetting("Secure Boot", "Disable"));
+        var ex = Assert.Throws<FirmwarePolicyException>(() => gateway.SetSetting("Secure Boot", "Disable"));
+        Assert.Contains("allowlist", ex.Message);
         Assert.Throws<FirmwarePolicyException>(() => gateway.SetSetting("Fast Charge", "Disable"));
         Assert.Empty(provider.Writes);
     }

@@ -10,6 +10,7 @@ public static class HpFirmwarePolicy
     public static FirmwarePolicy Default { get; } = new(
         readable:
         [
+            // Read-only; firmware enables it when Battery Health Manager is "Let HP Manage My Battery Health".
             "Adaptive Battery Optimizer",
             "Adaptive Battery Optimizer Status",
             "Fast Charge",
