@@ -27,7 +27,7 @@ public partial class BatteryViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasReading))]
     public partial string Charge { get; set; }
 
-    /// <summary>e.g. "charging · limited to 80% · Windows shows 90%".</summary>
+    /// <summary>e.g. "plugged in, not charging · limited to 80% · Windows shows 100%".</summary>
     [ObservableProperty]
     public partial string Details { get; set; }
 
@@ -55,8 +55,18 @@ public partial class BatteryViewModel : ObservableObject
         Charge = charge.AtLeast ? $"Battery {charge.Percent}% or more" : $"Battery {charge.Percent}%";
 
         List<string> details = [];
-        if (report.Status == BatteryStatus.Charging)
-            details.Add("charging");
+        // Idle means plugged in but not charging: either full, or held below full by the firmware
+        // (Battery Health Manager's limit, or HP deciding to stop short while it manages charging).
+        var state = report.Status switch
+        {
+            BatteryStatus.Charging => "charging",
+            BatteryStatus.Discharging => "on battery",
+            BatteryStatus.Idle when charge.AtLeast || charge.Percent < 99 => "plugged in, not charging",
+            BatteryStatus.Idle => "fully charged",
+            _ => null,
+        };
+        if (state is not null)
+            details.Add(state);
         if (charge.LimitPercent is { } limit)
         {
             details.Add($"limited to {limit}%");
