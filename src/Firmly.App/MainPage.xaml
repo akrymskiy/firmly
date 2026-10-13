@@ -32,6 +32,7 @@
                 Grid.Column="1"
                 VerticalAlignment="Center"
                 Command="{x:Bind ViewModel.RefreshCommand}"
+                AutomationProperties.Name="Refresh"
                 ToolTipService.ToolTip="Refresh">
                 <SymbolIcon Symbol="Refresh" />
             </Button>
@@ -64,14 +65,17 @@
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                     TextWrapping="Wrap" />
                             </StackPanel>
+                            <!-- One-way only: user picks are handled in code-behind, never through the binding. -->
                             <ComboBox
+                                x:Name="ValuePicker"
+                                x:Load="{x:Bind CanChange, Mode=OneWay}"
                                 Grid.Column="1"
                                 MinWidth="200"
                                 VerticalAlignment="Center"
                                 ItemsSource="{x:Bind Options}"
-                                SelectedItem="{x:Bind SelectedValue, Mode=TwoWay}"
-                                Visibility="{x:Bind CanChange, Mode=OneWay}"
-                                IsEnabled="{x:Bind IsIdle, Mode=OneWay}" />
+                                SelectedIndex="{x:Bind SelectedIndex, Mode=OneWay}"
+                                IsEnabled="{x:Bind IsIdle, Mode=OneWay}"
+                                SelectionChanged="{x:Bind OnPickerSelectionChanged}" />
                             <TextBlock
                                 Grid.Column="1"
                                 VerticalAlignment="Center"
