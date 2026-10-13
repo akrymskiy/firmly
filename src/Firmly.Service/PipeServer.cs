@@ -24,6 +24,9 @@ internal sealed class PipeServer(ILogger<PipeServer> logger, RequestHandler hand
         await Task.Yield();
         handler.LogStartupStatus();
 
+        // Loads what IdentifyCaller needs while impersonating, since it can't load anything itself then.
+        using (WindowsIdentity.GetCurrent(TokenAccessLevels.Query)) { }
+
         using var slots = new SemaphoreSlim(MaxConcurrentClients);
         var firstInstance = true;
         while (true)
@@ -106,13 +109,12 @@ internal sealed class PipeServer(ILogger<PipeServer> logger, RequestHandler hand
     {
         try
         {
-            var result = (FirmwareCaller.StandardUser, "unknown user");
-            pipe.RunAsClient(() =>
-            {
-                using var identity = WindowsIdentity.GetCurrent(TokenAccessLevels.Query);
-                result = (FirmwareCaller.FromIdentity(identity), identity.Name);
-            });
-            return result;
+            // While impersonating at Identification level the thread can't open files, so any assembly load
+            // fails. Only capture the token there (the call is warmed up at startup) and inspect it afterwards.
+            WindowsIdentity? identity = null;
+            pipe.RunAsClient(() => identity = WindowsIdentity.GetCurrent(TokenAccessLevels.Query));
+            using (identity)
+                return (FirmwareCaller.FromIdentity(identity!), identity!.Name);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
         {
