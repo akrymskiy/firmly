@@ -29,6 +29,17 @@ tests/
   Firmly.Core.Tests
 ```
 
+### Who can change what
+
+Firmly only exposes settings on a per-vendor allowlist. Each writable setting is either changeable by any signed-in user (power and charging settings, as with Windows power options) or by administrators only. If a BIOS administrator password is set, the firmware requires it for every change.
+
+On shared or managed machines, an administrator can restrict all changes to administrators, directly or through Group Policy:
+
+```powershell
+New-Item -Path HKLM:\SOFTWARE\Policies\Firmly -Force | Out-Null
+Set-ItemProperty -Path HKLM:\SOFTWARE\Policies\Firmly -Name RequireAdminForAllChanges -Value 1 -Type DWord
+```
+
 ## Building
 
 Requirements: Windows 10 2004+ and the .NET 10 SDK (pinned in `global.json`).

@@ -68,4 +68,21 @@ public class FirmwarePolicyTests
 
         Assert.Throws<FirmwarePolicyException>(() => policy.EnsureCanWrite(assetTag, "x"));
     }
+
+    [Fact]
+    public void AdminWritableSettings_AreWritableReadableAndRequireAdmin()
+    {
+        var policy = new FirmwarePolicy([], writable: ["Battery Health Manager"], adminWritable: ["Asset Tracking"]);
+
+        Assert.True(policy.IsWritable("Asset Tracking"));
+        Assert.True(policy.IsReadable("Asset Tracking"));
+        Assert.True(policy.RequiresAdmin("Asset Tracking"));
+        Assert.False(policy.RequiresAdmin("Battery Health Manager"));
+    }
+
+    [Fact]
+    public void Constructor_RejectsSettingOnBothWriteLists()
+    {
+        Assert.Throws<ArgumentException>(() => new FirmwarePolicy([], ["Fast Charge"], ["Fast Charge"]));
+    }
 }

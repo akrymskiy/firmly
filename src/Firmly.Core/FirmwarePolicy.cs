@@ -8,12 +8,19 @@ public sealed class FirmwarePolicy
 {
     private readonly HashSet<string> _readable;
     private readonly HashSet<string> _writable;
+    private readonly HashSet<string> _adminWritable;
 
     /// <param name="readable">Settings the app may read.</param>
-    /// <param name="writable">Settings the app may change; these are implicitly readable.</param>
-    public FirmwarePolicy(IEnumerable<string> readable, IEnumerable<string> writable)
+    /// <param name="writable">Settings any signed-in user may change; these are implicitly readable.</param>
+    /// <param name="adminWritable">Settings only administrators may change; these are implicitly readable.</param>
+    public FirmwarePolicy(IEnumerable<string> readable, IEnumerable<string> writable, IEnumerable<string>? adminWritable = null)
     {
+        _adminWritable = new HashSet<string>(adminWritable ?? [], StringComparer.Ordinal);
         _writable = new HashSet<string>(writable, StringComparer.Ordinal);
+        if (_writable.Overlaps(_adminWritable))
+            throw new ArgumentException("A setting cannot be both user-writable and admin-writable.", nameof(adminWritable));
+
+        _writable.UnionWith(_adminWritable);
         _readable = new HashSet<string>(readable, StringComparer.Ordinal);
         _readable.UnionWith(_writable);
     }
@@ -21,6 +28,8 @@ public sealed class FirmwarePolicy
     public bool IsReadable(string name) => _readable.Contains(name);
 
     public bool IsWritable(string name) => _writable.Contains(name);
+
+    public bool RequiresAdmin(string name) => _adminWritable.Contains(name);
 
     public IReadOnlyList<FirmwareSetting> FilterReadable(IEnumerable<FirmwareSetting> settings) =>
         settings.Where(s => IsReadable(s.Name)).ToList();
@@ -43,4 +52,7 @@ public sealed class FirmwarePolicy
     }
 }
 
-public sealed class FirmwarePolicyException(string message) : InvalidOperationException(message);
+public class FirmwarePolicyException(string message) : InvalidOperationException(message);
+
+/// <summary>The setting may be changed, but not by this caller.</summary>
+public sealed class FirmwareAccessDeniedException(string message) : FirmwarePolicyException(message);

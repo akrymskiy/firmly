@@ -17,8 +17,13 @@ public static class HpFirmwarePolicy
             "Product Name",
             "System BIOS Version",
         ],
+        // Power and charging behaviour: any signed-in user, as with Windows power settings.
         writable:
         [
             "Battery Health Manager",
+        ],
+        // Settings that affect other users or device security posture.
+        adminWritable:
+        [
         ]);
 }
