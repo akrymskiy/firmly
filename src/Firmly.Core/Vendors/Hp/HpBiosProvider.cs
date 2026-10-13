@@ -78,6 +78,13 @@ public sealed class HpBiosProvider : IFirmwareProvider
             throw new FirmwareWriteException($"HP BIOS rejected '{name}': {DescribeStatus(status)}", status);
     }
 
+    // Measured: with Maximize, full-charge capacity is reported as exactly 80% of the real one.
+    // Let HP Manage and Minimize report real readings.
+    public double? GetReportedChargeLimit(IReadOnlyList<FirmwareSetting> settings) =>
+        settings.Any(s => s.Name == "Battery Health Manager" && s.CurrentValue == "Maximize Battery Health Management")
+            ? 0.8
+            : null;
+
     private static FirmwareSetting? ToSetting(ManagementBaseObject obj)
     {
         // The BIOS reports a nameless placeholder instance; skip it.
@@ -117,6 +124,11 @@ public sealed class HpBiosProvider : IFirmwareProvider
             // Passwords and unknown types are never exposed.
             return null;
         }
+
+        // HP's placeholder for a setting that doesn't apply right now, e.g. Adaptive Battery Optimizer
+        // while Battery Health Manager is on Minimize.
+        if (value == "<-Unknown->")
+            value = FirmwareSetting.NotApplicable;
 
         return new FirmwareSetting(name, kind, value, possibleValues, Convert.ToUInt32(obj["IsReadOnly"]) != 0);
     }

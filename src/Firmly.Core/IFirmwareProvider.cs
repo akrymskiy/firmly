@@ -20,4 +20,10 @@ public interface IFirmwareProvider
 
     /// <exception cref="FirmwareWriteException">The firmware rejected the change.</exception>
     void SetSetting(string name, string value, string? biosPassword);
+
+    /// <summary>
+    /// The charge limit (e.g. 0.8) at which the firmware rescales the battery readings Windows shows, given the
+    /// current settings; null when Windows sees real readings. See <see cref="BatteryCharge"/>.
+    /// </summary>
+    double? GetReportedChargeLimit(IReadOnlyList<FirmwareSetting> settings);
 }

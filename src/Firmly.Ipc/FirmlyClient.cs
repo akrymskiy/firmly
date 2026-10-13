@@ -16,8 +16,11 @@ public sealed class FirmlyClient
         (await SendAsync(new IpcRequest(IpcCommand.GetStatus), ct)).Status ?? throw MissingResult();
 
     /// <exception cref="FirmlyServiceException">The service is unavailable or returned an error.</exception>
-    public async Task<IReadOnlyList<SettingInfo>> GetSettingsAsync(CancellationToken ct = default) =>
-        (await SendAsync(new IpcRequest(IpcCommand.GetSettings), ct)).Settings ?? throw MissingResult();
+    public async Task<FirmwareSnapshot> GetSettingsAsync(CancellationToken ct = default)
+    {
+        var response = await SendAsync(new IpcRequest(IpcCommand.GetSettings), ct);
+        return new FirmwareSnapshot(response.Settings ?? throw MissingResult(), response.ReportedChargeLimit);
+    }
 
     /// <returns>The setting as read back from firmware after the change.</returns>
     /// <exception cref="FirmlyServiceException">The service is unavailable or refused the change.</exception>

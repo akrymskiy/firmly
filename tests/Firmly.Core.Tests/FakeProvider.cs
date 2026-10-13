@@ -17,7 +17,11 @@ internal sealed class FakeProvider(
     /// <summary>When true, writes are accepted but the stored value does not change.</summary>
     public bool IgnoreWrites { get; set; }
 
+    public double? ReportedChargeLimit { get; set; }
+
     public bool IsSupported() => supported;
+
+    public double? GetReportedChargeLimit(IReadOnlyList<FirmwareSetting> settings) => ReportedChargeLimit;
 
     public IReadOnlyList<FirmwareSetting> GetSettings() => _settings.ToList();
 

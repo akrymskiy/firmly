@@ -19,6 +19,8 @@ public partial class MainPageViewModel : ObservableObject
 
     public ObservableCollection<SettingViewModel> Settings { get; } = [];
 
+    public BatteryViewModel Battery { get; } = new();
+
     [RelayCommand]
     private async Task RefreshAsync()
     {
@@ -59,8 +61,11 @@ public partial class MainPageViewModel : ObservableObject
 
     // Updates existing cards in place when the list is unchanged. Replacing them makes the list re-bind its
     // recycled ComboBoxes, which blanks their selection.
-    private void Show(IReadOnlyList<SettingInfo> settings)
+    private void Show(FirmwareSnapshot snapshot)
     {
+        Battery.SetReportedChargeLimit(snapshot.ReportedChargeLimit);
+
+        var settings = snapshot.Settings;
         var sameCards = Settings.Count == settings.Count
             && Settings.Zip(settings).All(p => p.First.Name == p.Second.Setting.Name
                 && p.First.Options.SequenceEqual(p.Second.Setting.PossibleValues));

@@ -44,14 +44,21 @@ public sealed record ServiceStatus(string? Vendor, bool IsAdministrator, bool Re
 /// <param name="Access">What the caller may do with this setting.</param>
 public sealed record SettingInfo(FirmwareSetting Setting, FirmwareChangeAccess Access);
 
+/// <param name="ReportedChargeLimit">See <see cref="BatteryCharge"/>; null when Windows sees real battery readings.</param>
+public sealed record FirmwareSnapshot(IReadOnlyList<SettingInfo> Settings, double? ReportedChargeLimit);
+
 /// <summary>Carries the result for the command that was sent, or an <see cref="Error"/>.</summary>
+/// <param name="ReportedChargeLimit">
+/// With <see cref="Settings"/>: the charge limit at which the firmware rescales Windows' battery readings, if any.
+/// </param>
 public sealed record IpcResponse(
     IpcError Error = IpcError.None,
     string? Message = null,
     ServiceStatus? Status = null,
     IReadOnlyList<SettingInfo>? Settings = null,
     SettingInfo? Setting = null,
-    uint? VendorCode = null)
+    uint? VendorCode = null,
+    double? ReportedChargeLimit = null)
 {
     public static IpcResponse Fail(IpcError error, string message, uint? vendorCode = null) =>
         new(error, message, VendorCode: vendorCode);

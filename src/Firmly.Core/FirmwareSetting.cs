@@ -22,4 +22,8 @@ public sealed record FirmwareSetting(
     FirmwareSettingKind Kind,
     string CurrentValue,
     IReadOnlyList<string> PossibleValues,
-    bool IsReadOnly);
+    bool IsReadOnly)
+{
+    /// <summary>Value providers report when a setting doesn't apply in the current configuration.</summary>
+    public const string NotApplicable = "Not applicable";
+}

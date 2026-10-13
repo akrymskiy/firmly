@@ -54,6 +54,16 @@ public class RequestHandlerTests
     }
 
     [Fact]
+    public async Task GetSettings_IncludesReportedChargeLimit()
+    {
+        _provider.ReportedChargeLimit = 0.8;
+
+        var response = await CreateHandler().HandleAsync(new(IpcCommand.GetSettings), User, "test", Ct);
+
+        Assert.Equal(0.8, response.ReportedChargeLimit);
+    }
+
+    [Fact]
     public async Task SetSetting_ReturnsReadBackSetting()
     {
         var response = await CreateHandler().HandleAsync(new(IpcCommand.SetSetting, "Battery Health Manager", "Minimize"), User, "test", Ct);

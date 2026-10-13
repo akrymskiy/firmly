@@ -51,8 +51,7 @@ internal sealed class RequestHandler(
         {
             return request.Command switch
             {
-                IpcCommand.GetSettings => new IpcResponse(Settings:
-                    [.. gateway.GetSettings().Select(s => new SettingInfo(s, gateway.GetChangeAccess(s, caller)))]),
+                IpcCommand.GetSettings => GetSettings(gateway, provider, caller),
                 IpcCommand.SetSetting => SetSetting(gateway, request, caller, callerName),
                 _ => IpcResponse.Fail(IpcError.BadRequest, $"Unknown command '{request.Command}'."),
             };
@@ -71,6 +70,14 @@ internal sealed class RequestHandler(
         {
             _firmwareLock.Release();
         }
+    }
+
+    private static IpcResponse GetSettings(FirmwareGateway gateway, IFirmwareProvider provider, FirmwareCaller caller)
+    {
+        var settings = gateway.GetSettings();
+        return new IpcResponse(
+            Settings: [.. settings.Select(s => new SettingInfo(s, gateway.GetChangeAccess(s, caller)))],
+            ReportedChargeLimit: provider.GetReportedChargeLimit(settings));
     }
 
     private IpcResponse SetSetting(FirmwareGateway gateway, IpcRequest request, FirmwareCaller caller, string callerName)
