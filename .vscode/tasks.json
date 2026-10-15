@@ -1,0 +1,27 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Firmly service (elevated)",
+      "detail": "Builds Firmly.Service, then runs it in an elevated console window (UAC prompt).",
+      "type": "process",
+      "command": "cmd.exe",
+      "args": ["/d", "/c", "${workspaceFolder}\\tools\\start-service.cmd", "${input:serviceConfiguration}"],
+      "problemMatcher": "$msCompile",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "serviceConfiguration",
+      "type": "pickString",
+      "description": "Configuration to build and run",
+      "options": ["Debug", "Release"],
+      "default": "Debug"
+    }
+  ]
+}
