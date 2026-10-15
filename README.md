@@ -55,6 +55,8 @@ To try the service against real hardware, run it from an elevated terminal:
 dotnet run --project src/Firmly.Service
 ```
 
+Or run `tools\start-service.cmd [Debug|Release]` from any terminal: it builds the service, then asks for elevation and runs it in a new console window.
+
 ## Disclaimer
 
 Firmly is an independent project and is not affiliated with, endorsed by, or sponsored by HP Inc. or any other hardware vendor. All product names and trademarks are the property of their respective owners. Changing firmware settings is at your own risk.
