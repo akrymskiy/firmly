@@ -6,7 +6,20 @@
       "detail": "Builds Firmly.Service, then runs it in an elevated console window (UAC prompt).",
       "type": "process",
       "command": "cmd.exe",
-      "args": ["/d", "/c", "${workspaceFolder}\\tools\\start-service.cmd", "${input:serviceConfiguration}"],
+      "args": ["/d", "/c", "${workspaceFolder}\\tools\\start-service.cmd", "${input:configuration}"],
+      "problemMatcher": "$msCompile",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    },
+    {
+      "label": "Start Firmly app",
+      "detail": "Builds Firmly.App for x64 and launches it with its debug package identity. To debug, attach to Firmly.exe.",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["run", "--project", "${workspaceFolder}\\src\\Firmly.App", "--no-launch-profile", "-c", "${input:configuration}", "-p:Platform=x64"],
       "problemMatcher": "$msCompile",
       "presentation": {
         "reveal": "always",
@@ -17,7 +30,7 @@
   ],
   "inputs": [
     {
-      "id": "serviceConfiguration",
+      "id": "configuration",
       "type": "pickString",
       "description": "Configuration to build and run",
       "options": ["Debug", "Release"],
