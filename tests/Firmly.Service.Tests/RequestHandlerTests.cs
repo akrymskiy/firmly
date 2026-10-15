@@ -1,7 +1,6 @@
 using Firmly.Core;
 using Firmly.Core.Tests;
 using Firmly.Ipc;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Firmly.Service.Tests;
 
@@ -22,12 +21,15 @@ public class RequestHandlerTests
             new("Secure Boot", FirmwareSettingKind.Enumeration, "Enable", ["Disable", "Enable"], false),
         ]);
 
+    private readonly ManualTimeProvider _time = new();
+    private readonly ListLogger<RequestHandler> _logger = new();
     private bool _lockdown;
 
     private RequestHandler CreateHandler(IFirmwareProvider? provider = null) => new(
-        NullLogger<RequestHandler>.Instance,
+        _logger,
         new FirmwareProviderResolver([provider ?? _provider]),
-        () => _lockdown);
+        () => _lockdown,
+        _time);
 
     [Fact]
     public async Task GetStatus_ReportsVendorCallerAndLockdown()
@@ -123,5 +125,92 @@ public class RequestHandlerTests
 
         Assert.Null((await handler.HandleAsync(new(IpcCommand.GetStatus), User, "test", Ct)).Status!.Vendor);
         Assert.Equal(IpcError.Unsupported, (await handler.HandleAsync(new(IpcCommand.GetSettings), User, "test", Ct)).Error);
+    }
+
+    [Fact]
+    public async Task Flood_IsRefusedPerCaller_AndRecovers()
+    {
+        var handler = CreateHandler();
+        for (var i = 0; i < RequestHandler.RequestBurst; i++)
+            Assert.Equal(IpcError.None, (await handler.HandleAsync(new(IpcCommand.GetStatus), User, "flooder", Ct)).Error);
+
+        var refused = await handler.HandleAsync(new(IpcCommand.GetSettings), User, "flooder", Ct);
+        Assert.Equal(IpcError.TooManyRequests, refused.Error);
+        Assert.Equal(IpcError.None, (await handler.HandleAsync(new(IpcCommand.GetStatus), User, "someone else", Ct)).Error);
+
+        _time.Advance(RequestHandler.RequestInterval);
+        Assert.Equal(IpcError.None, (await handler.HandleAsync(new(IpcCommand.GetStatus), User, "flooder", Ct)).Error);
+    }
+
+    [Fact]
+    public async Task RepeatedRefusals_AreLoggedOncePerMinute()
+    {
+        var handler = CreateHandler();
+
+        for (var i = 0; i < 100; i++)
+        {
+            await handler.HandleAsync(new(IpcCommand.SetSetting, "Secure Boot", "Disable"), Admin, "looper", Ct);
+            _time.Advance(RequestHandler.RequestInterval);
+        }
+
+        // 100 refusals over 20 seconds, plus the flood warning never firing: one line.
+        Assert.Single(_logger.Warnings);
+
+        _time.Advance(TimeSpan.FromMinutes(1));
+        await handler.HandleAsync(new(IpcCommand.SetSetting, "Secure Boot", "Disable"), Admin, "looper", Ct);
+        Assert.Contains("Repeated 99 times", _logger.Warnings[^1]);
+    }
+
+    [Fact]
+    public async Task FloodWarning_IsLoggedOncePerMinute()
+    {
+        var handler = CreateHandler();
+
+        for (var i = 0; i < RequestHandler.RequestBurst + 500; i++)
+            await handler.HandleAsync(new(IpcCommand.GetStatus), User, "flooder", Ct);
+
+        Assert.Contains("flooder", Assert.Single(_logger.Warnings));
+    }
+
+    [Fact]
+    public async Task FirmwareWrites_AreCappedMachineWide()
+    {
+        var handler = CreateHandler();
+        string[] values = ["Minimize", "Maximize"];
+
+        for (var i = 0; i < WriteLimitedProvider.Burst; i++)
+        {
+            var response = await handler.HandleAsync(new(IpcCommand.SetSetting, "Battery Health Manager", values[i % 2]), User, $"user{i}", Ct);
+            Assert.Equal(IpcError.None, response.Error);
+        }
+
+        var refused = await handler.HandleAsync(new(IpcCommand.SetSetting, "Battery Health Manager", "Minimize"), User, "another user", Ct);
+
+        Assert.Equal(IpcError.TooManyRequests, refused.Error);
+        Assert.Contains("30 seconds", refused.Message);
+        Assert.Equal(WriteLimitedProvider.Burst, _provider.Writes.Count);
+
+        _time.Advance(WriteLimitedProvider.Interval);
+        Assert.Equal(IpcError.None, (await handler.HandleAsync(new(IpcCommand.SetSetting, "Battery Health Manager", "Minimize"), User, "x", Ct)).Error);
+    }
+
+    [Fact]
+    public async Task SettingToCurrentValue_DoesNotUseWriteBudget()
+    {
+        var handler = CreateHandler();
+
+        for (var i = 0; i < WriteLimitedProvider.Burst + 5; i++)
+            Assert.Equal(IpcError.None, (await handler.HandleAsync(new(IpcCommand.SetSetting, "Battery Health Manager", "Maximize"), User, "test", Ct)).Error);
+
+        Assert.Empty(_provider.Writes);
+    }
+
+    [Fact]
+    public async Task SetSetting_OverlongName_IsBadRequest()
+    {
+        var response = await CreateHandler().HandleAsync(new(IpcCommand.SetSetting, new string('x', 10_000), "v"), User, "test", Ct);
+
+        Assert.Equal(IpcError.BadRequest, response.Error);
+        Assert.Empty(_logger.Warnings);
     }
 }

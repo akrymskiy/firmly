@@ -11,9 +11,12 @@ namespace Firmly.Service;
 /// Serves Firmly.App over a local named pipe, one request and one response per connection.
 /// Only signed-in (interactive) users can connect; network clients are denied.
 /// </summary>
-internal sealed class PipeServer(ILogger<PipeServer> logger, RequestHandler handler) : BackgroundService
+internal sealed class PipeServer(ILogger<PipeServer> logger, RequestHandler handler, TimeProvider time) : BackgroundService
 {
     private const int MaxConcurrentClients = 4;
+
+    // Repeats of the same warning within this window are counted rather than logged.
+    private readonly LogThrottle _warnings = new(TimeSpan.FromMinutes(1), time);
 
     // A client that connects but doesn't send (or doesn't read the reply) is dropped after this.
     private static readonly TimeSpan IoTimeout = TimeSpan.FromSeconds(5);
@@ -79,7 +82,8 @@ internal sealed class PipeServer(ILogger<PipeServer> logger, RequestHandler hand
                     }
                     catch (InvalidDataException ex)
                     {
-                        logger.LogWarning("Rejected a malformed request: {Reason}", ex.Message);
+                        if (_warnings.ShouldLog("malformed", out var repeats))
+                            logger.LogWarning("Rejected a malformed request: {Reason}{Repeats}", ex.Message, LogThrottle.Note(repeats));
                         response = IpcResponse.Fail(IpcError.BadRequest, "Malformed request.");
                     }
                 }
@@ -118,7 +122,9 @@ internal sealed class PipeServer(ILogger<PipeServer> logger, RequestHandler hand
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
         {
-            logger.LogWarning("Could not identify the pipe client; treating it as a standard user: {Reason}", ex.Message);
+            if (_warnings.ShouldLog("unidentified", out var repeats))
+                logger.LogWarning("Could not identify the pipe client; treating it as a standard user: {Reason}{Repeats}",
+                    ex.Message, LogThrottle.Note(repeats));
             return (FirmwareCaller.StandardUser, "unknown user");
         }
     }

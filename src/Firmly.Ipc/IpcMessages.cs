@@ -31,6 +31,8 @@ public enum IpcError
     AdministratorRequired,
     /// <summary>The firmware refused the change, for example because of a wrong BIOS password.</summary>
     FirmwareRejected,
+    /// <summary>The caller sent too many requests, or firmware was changed too often; try again shortly.</summary>
+    TooManyRequests,
     ServiceError,
     /// <summary>Client side only: the service is not running or did not answer.</summary>
     ServiceUnavailable,
