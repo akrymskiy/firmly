@@ -75,7 +75,7 @@ jobs:
           Copy-Item (Get-ChildItem $built -Filter '*.cer' | Select-Object -First 1) "$zip\Firmly.cer"
           $runtime = Get-ChildItem "$built\Dependencies\${{ matrix.platform }}" -Filter 'Microsoft.WindowsAppRuntime*.msix' | Select-Object -First 1
           Copy-Item $runtime "$zip\$($runtime.BaseName)_${{ matrix.platform }}.msix"
-          Copy-Item tools/release/Install.ps1, tools/release/Install.cmd $zip
+          Copy-Item tools/installer/Install.ps1, tools/installer/Install.cmd $zip
           Get-ChildItem $zip | Format-Table Name, Length
           Compress-Archive "$zip\*" "$env:RUNNER_TEMP\$name.zip"
 
@@ -102,4 +102,4 @@ jobs:
         run: |
           prerelease=$([[ "${{ github.ref_name }}" == *-* ]] && echo --prerelease || true)
           gh release create "${{ github.ref_name }}" packages/*.zip $prerelease \
-            --title "Firmly ${{ github.ref_name }}" --notes-file tools/release/notes.md --generate-notes
+            --title "Firmly ${{ github.ref_name }}" --notes-file tools/installer/release-notes.md --generate-notes
