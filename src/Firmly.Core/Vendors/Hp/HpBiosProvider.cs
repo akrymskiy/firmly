@@ -1,4 +1,4 @@
-using System.Management;
+using Firmly.Core.Wmi;
 
 namespace Firmly.Core.Vendors.Hp;
 
@@ -18,60 +18,56 @@ public sealed class HpBiosProvider : IFirmwareProvider
     {
         try
         {
-            var scope = new ManagementScope(Namespace);
-            scope.Connect();
+            using var wmi = WmiNamespace.Connect(Namespace);
             return true;
         }
-        catch (ManagementException ex) when (ex.ErrorCode == ManagementStatus.InvalidNamespace)
+        catch (WmiException ex) when (ex.HResult == WmiException.InvalidNamespace)
         {
             return false;
         }
     }
 
-    public IReadOnlyList<FirmwareSetting> GetSettings()
+    public IReadOnlyList<FirmwareSetting> GetSettings() => WithAccessCheck(() =>
     {
+        using var wmi = WmiNamespace.Connect(Namespace);
         // Querying the base class returns every subclass instance (enumeration, string, integer, ...).
-        using var searcher = new ManagementObjectSearcher(
-            new ManagementScope(Namespace),
-            new ObjectQuery("SELECT * FROM HP_BIOSSetting"));
-
-        var settings = new List<FirmwareSetting>();
-        WithAccessCheck(() =>
+        var results = wmi.Query("SELECT * FROM HP_BIOSSetting");
+        try
         {
-            using var results = searcher.Get();
-            foreach (var obj in results)
-            {
-                using (obj)
-                {
-                    if (ToSetting(obj) is { } setting)
-                        settings.Add(setting);
-                }
-            }
-        });
-        return settings;
-    }
+            return results.Select(ToSetting).OfType<FirmwareSetting>().ToList();
+        }
+        finally
+        {
+            foreach (var result in results)
+                result.Dispose();
+        }
+    });
 
     public void SetSetting(string name, string value, string? biosPassword)
     {
-        using var searcher = new ManagementObjectSearcher(
-            new ManagementScope(Namespace),
-            new ObjectQuery("SELECT * FROM HP_BIOSSettingInterface"));
-
-        uint status = 0;
-        WithAccessCheck(() =>
+        var status = WithAccessCheck(() =>
         {
-            using var results = searcher.Get();
-            using var iface = results.Cast<ManagementObject>().FirstOrDefault()
-                ?? throw new FirmwareWriteException("HP_BIOSSettingInterface is not available.", 1);
+            using var wmi = WmiNamespace.Connect(Namespace);
+            var interfaces = wmi.Query("SELECT * FROM HP_BIOSSettingInterface");
+            try
+            {
+                var iface = interfaces.FirstOrDefault()
+                    ?? throw new FirmwareWriteException("HP_BIOSSettingInterface is not available.", 1);
 
-            using var args = iface.GetMethodParameters("SetBIOSSetting");
-            args["Name"] = name;
-            args["Value"] = value;
-            // HP expects the password with an encoding prefix; with no password set this is just the prefix.
-            args["Password"] = "<utf-16/>" + (biosPassword ?? "");
-
-            using var result = iface.InvokeMethod("SetBIOSSetting", args, null);
-            status = Convert.ToUInt32(result["Return"]);
+                using var result = wmi.InvokeMethod(iface, "SetBIOSSetting", new Dictionary<string, string>
+                {
+                    ["Name"] = name,
+                    ["Value"] = value,
+                    // HP expects the password with an encoding prefix; with no password set this is just the prefix.
+                    ["Password"] = "<utf-16/>" + (biosPassword ?? ""),
+                });
+                return unchecked((uint)(result.GetInt32("Return") ?? 2));
+            }
+            finally
+            {
+                foreach (var item in interfaces)
+                    item.Dispose();
+            }
         });
 
         if (status != 0)
@@ -93,14 +89,14 @@ public sealed class HpBiosProvider : IFirmwareProvider
     public double? GetReportedChargeLimit(IReadOnlyList<FirmwareSetting> settings) =>
         GetChargeModes(settings)?.Current is { Kind: ChargeModeKind.Limited, LimitPercent: { } limit } ? limit / 100.0 : null;
 
-    private static FirmwareSetting? ToSetting(ManagementBaseObject obj)
+    private static FirmwareSetting? ToSetting(WmiObject obj)
     {
         // The BIOS reports a nameless placeholder instance; skip it.
-        if (obj["Name"] is not string name || name.Length == 0)
+        if (obj.GetString("Name") is not { Length: > 0 } name)
             return null;
 
         // Concrete classes are HPBIOS_BIOSEnumeration, HPBIOS_BIOSString, etc.
-        var className = obj.ClassPath.ClassName;
+        var className = obj.ClassName;
         FirmwareSettingKind kind;
         IReadOnlyList<string> possibleValues = [];
         string value;
@@ -108,24 +104,24 @@ public sealed class HpBiosProvider : IFirmwareProvider
         if (className.EndsWith("Enumeration", StringComparison.Ordinal))
         {
             kind = FirmwareSettingKind.Enumeration;
-            value = (string?)obj["CurrentValue"] ?? "";
-            possibleValues = (string[]?)obj["PossibleValues"] ?? [];
+            value = obj.GetString("CurrentValue") ?? "";
+            possibleValues = obj.GetStrings("PossibleValues") ?? [];
         }
         else if (className.EndsWith("OrderedList", StringComparison.Ordinal))
         {
             kind = FirmwareSettingKind.OrderedList;
-            value = (string?)obj["Value"] ?? "";
-            possibleValues = (string[]?)obj["Elements"] ?? [];
+            value = obj.GetString("Value") ?? "";
+            possibleValues = obj.GetStrings("Elements") ?? [];
         }
         else if (className.EndsWith("Integer", StringComparison.Ordinal))
         {
             kind = FirmwareSettingKind.Integer;
-            value = (string?)obj["Value"] ?? "";
+            value = obj.GetString("Value") ?? "";
         }
         else if (className.EndsWith("String", StringComparison.Ordinal))
         {
             kind = FirmwareSettingKind.String;
-            value = (string?)obj["Value"] ?? "";
+            value = obj.GetString("Value") ?? "";
         }
         else
         {
@@ -138,17 +134,17 @@ public sealed class HpBiosProvider : IFirmwareProvider
         if (value == "<-Unknown->")
             value = FirmwareSetting.NotApplicable;
 
-        return new FirmwareSetting(name, kind, value, possibleValues, Convert.ToUInt32(obj["IsReadOnly"]) != 0);
+        return new FirmwareSetting(name, kind, value, possibleValues, obj.GetInt32("IsReadOnly") is { } readOnly and not 0);
     }
 
     // Non-admin callers can connect to the namespace but are denied on enumeration and method calls.
-    private static void WithAccessCheck(Action action)
+    private static T WithAccessCheck<T>(Func<T> action)
     {
         try
         {
-            action();
+            return action();
         }
-        catch (ManagementException ex) when (ex.ErrorCode == ManagementStatus.AccessDenied)
+        catch (WmiException ex) when (ex.IsAccessDenied)
         {
             throw new UnauthorizedAccessException("Accessing HP BIOS settings requires administrator rights.", ex);
         }

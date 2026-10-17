@@ -2,6 +2,10 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- Trimmed when published self-contained, as in the MSIX: about 22 MB instead of 80. Trimming needs
+         self-contained. IsAotCompatible reports code that trimming (or a later native AOT build) would break. -->
+    <PublishTrimmed Condition="'$(SelfContained)' == 'true'">true</PublishTrimmed>
+    <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
   <ItemGroup>

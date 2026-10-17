@@ -71,8 +71,10 @@
     <PropertyGroup>
       <_FirmlyServicePublishDir>$(MSBuildProjectDirectory)\$(IntermediateOutputPath)FirmlyService\</_FirmlyServicePublishDir>
     </PropertyGroup>
+    <!-- Not OutDir: when it's set for the app (tools\install-package.ps1 does), the service would build into the app's folder. -->
     <MSBuild Projects="..\Firmly.Service\Firmly.Service.csproj" Targets="Restore;Publish"
-             Properties="Configuration=$(Configuration);Platform=$(Platform);RuntimeIdentifier=$(RuntimeIdentifier);SelfContained=true;PublishDir=$(_FirmlyServicePublishDir)" />
+             Properties="Configuration=$(Configuration);Platform=$(Platform);RuntimeIdentifier=$(RuntimeIdentifier);SelfContained=true;PublishDir=$(_FirmlyServicePublishDir)"
+             RemoveProperties="OutDir" />
     <ItemGroup>
       <_FirmlyServiceFile Include="$(_FirmlyServicePublishDir)**" />
       <Content Include="@(_FirmlyServiceFile)"

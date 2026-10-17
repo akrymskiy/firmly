@@ -2,10 +2,14 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- Source-generated COM for WMI (Wmi\WmiInterop.cs). -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- The service is published trimmed and ahead-of-time compiled; this reports anything that would break. -->
+    <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Management" />
+    <InternalsVisibleTo Include="Firmly.Core.Tests" />
   </ItemGroup>
 
 </Project>
