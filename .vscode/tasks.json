@@ -31,7 +31,7 @@
       "label": "Install Firmly package with service (elevated)",
       "detail": "Builds the app with its packaged LocalSystem service and registers it like an MSIX install (UAC prompt). Uninstall it before using dotnet run again.",
       "type": "process",
-      "command": "powershell.exe",
+      "command": "pwsh.exe",
       "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}\\tools\\install-package.ps1", "-Configuration", "${input:configuration}"],
       "problemMatcher": "$msCompile",
       "presentation": {
@@ -44,7 +44,7 @@
       "label": "Uninstall Firmly package (elevated)",
       "detail": "Removes the installed Firmly package and its service (UAC prompt), so dotnet run and the dev service work again.",
       "type": "process",
-      "command": "powershell.exe",
+      "command": "pwsh.exe",
       "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}\\tools\\install-package.ps1", "-Uninstall"],
       "problemMatcher": [],
       "presentation": {

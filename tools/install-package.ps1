@@ -1,3 +1,4 @@
+#Requires -Version 7.4
 <#
 Builds Firmly with its packaged service and registers it from a loose layout, the way an MSIX install would,
 for trying the real LocalSystem service. Needs Developer Mode; asks for administrator rights (UAC).
@@ -9,7 +10,7 @@ rights), and tools\start-service.cmd can't start a second service. Run with -Uni
 #>
 param(
     [ValidateSet('Debug', 'Release')] [string] $Configuration = 'Release',
-    [ValidateSet('x64', 'ARM64')] [string] $Platform = $(if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'ARM64' } else { 'x64' }),
+    [ValidateSet('x64', 'ARM64')] [string] $Platform = $env:PROCESSOR_ARCHITECTURE -eq 'ARM64' ? 'ARM64' : 'x64',
     [switch] $Uninstall,
     # Set by the script itself when it relaunches elevated.
     [switch] $Elevated
@@ -22,7 +23,7 @@ $staging = Join-Path $root "artifacts\package\$Platform-$Configuration\build"
 $layout = Join-Path $root "artifacts\package\$Platform-$Configuration\layout"
 $packageName = 'AlexKrymskiy.Firmly'
 
-$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+$isAdmin = [Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
     [Security.Principal.WindowsBuiltInRole]::Administrator)
 
 if (-not $Elevated) {
@@ -35,7 +36,7 @@ if (-not $Elevated) {
         $arguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$PSCommandPath`"",
             '-Configuration', $Configuration, '-Platform', $Platform, '-Elevated')
         if ($Uninstall) { $arguments += '-Uninstall' }
-        $process = Start-Process powershell.exe -Verb RunAs -ArgumentList $arguments -Wait -PassThru
+        $process = Start-Process pwsh.exe -Verb RunAs -ArgumentList $arguments -Wait -PassThru
         exit $process.ExitCode
     }
 }

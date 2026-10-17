@@ -26,7 +26,7 @@ dotnet build "%ROOT%\src\Firmly.Service" -c %CONFIG% -v q -nologo || exit /b 1
 net session >nul 2>&1
 if not errorlevel 1 goto run
 
-powershell -NoProfile -Command "Start-Process -Verb RunAs -FilePath '%~f0' -ArgumentList '%CONFIG%','--elevated'"
+pwsh -NoProfile -Command "Start-Process -Verb RunAs -FilePath '%~f0' -ArgumentList '%CONFIG%','--elevated'"
 exit /b
 
 :run
