@@ -80,26 +80,26 @@ public partial class BatteryViewModel : ObservableObject
             _ => PowerState.Unknown,
         };
 
-        Charge = charge.AtLeast ? $"Battery {charge.Percent}% or more" : $"Battery {charge.Percent}%";
+        Charge = Text.Format(charge.AtLeast ? "Battery_ChargeAtLeast" : "Battery_Charge", charge.Percent);
 
         List<string> details = [];
         // Idle means plugged in but not charging: either full, or held below full by the firmware
         // (Battery Health Manager's limit, or HP deciding to stop short while it manages charging).
         var state = report.Status switch
         {
-            BatteryStatus.Charging => "charging",
-            BatteryStatus.Discharging => "on battery",
-            BatteryStatus.Idle when charge.AtLeast || charge.Percent < 99 => "plugged in, not charging",
-            BatteryStatus.Idle => "fully charged",
+            BatteryStatus.Charging => Text.Get("Battery_Charging"),
+            BatteryStatus.Discharging => Text.Get("Battery_OnBattery"),
+            BatteryStatus.Idle when charge.AtLeast || charge.Percent < 99 => Text.Get("Battery_PluggedInNotCharging"),
+            BatteryStatus.Idle => Text.Get("Battery_FullyCharged"),
             _ => null,
         };
         if (state is not null)
             details.Add(state);
         if (charge.LimitPercent is { } limit)
         {
-            details.Add($"limited to {limit}%");
-            details.Add($"Windows shows {charge.WindowsPercent}%");
+            details.Add(Text.Format("Battery_LimitedTo", limit));
+            details.Add(Text.Format("Battery_WindowsShows", charge.WindowsPercent));
         }
-        Details = string.Join(" · ", details);
+        Details = string.Join(Text.Get("Separator"), details);
     }
 }

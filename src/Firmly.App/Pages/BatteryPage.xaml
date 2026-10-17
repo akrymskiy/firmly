@@ -13,7 +13,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel Spacing="2">
-                    <TextBlock Text="Battery" Style="{StaticResource TitleTextBlockStyle}" />
+                    <TextBlock x:Uid="Battery_Title" Style="{StaticResource TitleTextBlockStyle}" />
                     <TextBlock
                         Text="{x:Bind Session.Status, Mode=OneWay}"
                         Style="{StaticResource CaptionTextBlockStyle}"
@@ -21,11 +21,10 @@
                         TextWrapping="Wrap" />
                 </StackPanel>
                 <Button
+                    x:Uid="Battery_Refresh"
                     Grid.Column="1"
                     VerticalAlignment="Center"
-                    Command="{x:Bind Session.RefreshCommand}"
-                    AutomationProperties.Name="Refresh"
-                    ToolTipService.ToolTip="Refresh">
+                    Command="{x:Bind Session.RefreshCommand}">
                     <SymbolIcon Symbol="Refresh" />
                 </Button>
             </Grid>
@@ -49,19 +48,19 @@
                 Message="{x:Bind Session.Charge.OverrideMessage, Mode=OneWay}">
                 <InfoBar.ActionButton>
                     <Button
-                        Content="Switch back now"
+                        x:Uid="Battery_SwitchBackNow"
                         Command="{x:Bind Session.Charge.SwitchBackNowCommand}"
                         IsEnabled="{x:Bind Session.Charge.CanChange, Mode=OneWay}" />
                 </InfoBar.ActionButton>
             </InfoBar>
 
             <StackPanel Spacing="4" Visibility="{x:Bind Session.Charge.HasModes, Mode=OneWay}">
-                <TextBlock Text="Charge mode" Style="{StaticResource SectionHeaderStyle}" />
+                <TextBlock x:Uid="Battery_ChargeMode" Style="{StaticResource SectionHeaderStyle}" />
                 <Grid Style="{StaticResource CardStyle}">
                     <StackPanel Spacing="4">
                         <!-- One-way: user picks are handled in code-behind, never through the binding. -->
                         <RadioButtons
-                            AutomationProperties.Name="Charge mode"
+                            x:Uid="Battery_ChargeModePicker"
                             ItemsSource="{x:Bind Session.Charge.Modes}"
                             SelectedIndex="{x:Bind Session.Charge.SelectedIndex, Mode=OneWay}"
                             IsEnabled="{x:Bind Session.Charge.CanChange, Mode=OneWay}"
@@ -90,44 +89,44 @@
             </StackPanel>
 
             <StackPanel Spacing="4" Visibility="{x:Bind Session.Charge.IsOverrideOffered, Mode=OneWay}">
-                <TextBlock Text="Full charge for a while" Style="{StaticResource SectionHeaderStyle}" />
+                <TextBlock x:Uid="Battery_FullChargeHeader" Style="{StaticResource SectionHeaderStyle}" />
                 <Grid Style="{StaticResource CardStyle}" RowSpacing="12">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <TextBlock
-                        TextWrapping="Wrap"
-                        Text="Charges to 100% now, and switches back by itself when the time is up, even if Firmly isn't open. Handy before a trip." />
+                        x:Uid="Battery_FullChargeExplanation"
+                        TextWrapping="Wrap" />
                     <StackPanel Grid.Row="1" Spacing="8">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock VerticalAlignment="Center" Text="For" />
+                            <TextBlock x:Uid="Battery_For" VerticalAlignment="Center" />
                             <ComboBox
-                                AutomationProperties.Name="How long"
+                                x:Uid="Battery_HowLong"
                                 ItemsSource="{x:Bind Session.Charge.Durations}"
                                 DisplayMemberPath="Label"
                                 SelectedIndex="{x:Bind Session.Charge.DurationIndex, Mode=TwoWay}" />
                             <CalendarDatePicker
-                                AutomationProperties.Name="Until the day"
+                                x:Uid="Battery_UntilTheDay"
                                 Visibility="{x:Bind Session.Charge.IsCustomDuration, Mode=OneWay}"
                                 Date="{x:Bind Session.Charge.CustomDate, Mode=TwoWay}"
                                 MinDate="{x:Bind Session.Charge.FirstCustomDate}"
                                 MaxDate="{x:Bind Session.Charge.LastCustomDate}" />
                             <TimePicker
-                                AutomationProperties.Name="At"
+                                x:Uid="Battery_At"
                                 Visibility="{x:Bind Session.Charge.IsCustomDuration, Mode=OneWay}"
                                 Time="{x:Bind Session.Charge.CustomTime, Mode=TwoWay}"
                                 MinuteIncrement="15" />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock VerticalAlignment="Center" Text="then" />
+                            <TextBlock x:Uid="Battery_Then" VerticalAlignment="Center" />
                             <ComboBox
-                                AutomationProperties.Name="Then switch back to"
+                                x:Uid="Battery_ThenSwitchBackTo"
                                 ItemsSource="{x:Bind Session.Charge.RestoreModes}"
                                 DisplayMemberPath="Label"
                                 SelectedIndex="{x:Bind Session.Charge.RestoreIndex, Mode=TwoWay}" />
                             <Button
-                                Content="Start"
+                                x:Uid="Battery_Start"
                                 Style="{StaticResource AccentButtonStyle}"
                                 Command="{x:Bind Session.Charge.StartOverrideCommand}"
                                 IsEnabled="{x:Bind Session.Charge.CanChange, Mode=OneWay}" />

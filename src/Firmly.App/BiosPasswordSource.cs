@@ -43,17 +43,16 @@ internal sealed class BiosPasswordSource(BiosPasswordGate gate) : IBiosPasswordS
         var root = await App.GetXamlRootAsync();
         var canRemember = gate.AllowSaved && await BiosPasswordVault.IsAvailableAsync();
 
-        var password = new PasswordBox { Header = "Password" };
+        var password = new PasswordBox { Header = Text.Get("Password_Header") };
         var remember = new CheckBox
         {
-            Content = "Remember it on this PC, unlocked with Windows Hello",
+            Content = Text.Get("Password_Remember"),
             Visibility = canRemember ? Visibility.Visible : Visibility.Collapsed,
         };
         var panel = new StackPanel { Spacing = 12, MaxWidth = 440 };
         panel.Children.Add(new TextBlock
         {
-            Text = "This PC's BIOS has an administrator password. Firmly passes it to the BIOS for this change, "
-                + "and keeps it only if you ask.",
+            Text = Text.Get("Password_Explanation"),
             TextWrapping = TextWrapping.Wrap,
         });
         if (rejected)
@@ -62,8 +61,8 @@ internal sealed class BiosPasswordSource(BiosPasswordGate gate) : IBiosPasswordS
                 IsOpen = true,
                 IsClosable = false,
                 Severity = InfoBarSeverity.Warning,
-                Title = "The BIOS didn't accept the password.",
-                Message = "Check it and try again. After several wrong tries, a BIOS may refuse changes until the PC restarts.",
+                Title = Text.Get("Password_RejectedTitle"),
+                Message = Text.Get("Password_RejectedMessage"),
             });
         panel.Children.Add(password);
         panel.Children.Add(remember);
@@ -73,10 +72,10 @@ internal sealed class BiosPasswordSource(BiosPasswordGate gate) : IBiosPasswordS
             XamlRoot = root,
             Style = (Style)Application.Current.Resources["DefaultContentDialogStyle"],
             RequestedTheme = (App.Window.Content as FrameworkElement)?.ActualTheme ?? ElementTheme.Default,
-            Title = "BIOS administrator password",
+            Title = Text.Get("Password_Title"),
             Content = panel,
-            PrimaryButtonText = "OK",
-            CloseButtonText = "Cancel",
+            PrimaryButtonText = Text.Get("OK"),
+            CloseButtonText = Text.Get("Cancel"),
             DefaultButton = ContentDialogButton.Primary,
             IsPrimaryButtonEnabled = false,
         };

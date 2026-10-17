@@ -49,9 +49,9 @@ public partial class SettingsViewModel : ObservableObject
     public partial bool HasSavedPassword { get; set; } = BiosPasswordVault.HasSaved;
 
     public string SavedPasswordText =>
-        HasSavedPassword ? "Saved on this PC, unlocked with Windows Hello."
-        : !_session.AllowSavedBiosPassword ? "Your organization doesn't allow saving it, so Firmly asks for it each time."
-        : "Not saved. To save it, choose \u201cRemember it\u201d when Firmly asks for it.";
+        Text.Get(HasSavedPassword ? "Settings_PasswordSaved"
+            : !_session.AllowSavedBiosPassword ? "Settings_PasswordNotAllowed"
+            : "Settings_PasswordNotSaved");
 
     [RelayCommand]
     private Task ForgetPasswordAsync() => BiosPasswordVault.ForgetAsync();
@@ -94,10 +94,9 @@ public partial class SettingsViewModel : ObservableObject
 
     public bool HasStartupNote => StartupNote.Length > 0;
 
-    public string AppVersion => $"Version {AboutInfo.AppVersion}";
+    public string AppVersion => Text.Format("Settings_Version", AboutInfo.AppVersion);
 
-    public string Legal => $"{AboutInfo.Copyright}. Firmly is not affiliated with HP Inc. or any other hardware vendor. "
-        + "Changing firmware settings is at your own risk.";
+    public string Legal => Text.Format("Settings_Legal", AboutInfo.Copyright);
 
     public Uri HelpUri { get; } = new(AboutInfo.HelpUrl);
     public Uri SourceUri { get; } = new(AboutInfo.RepositoryUrl);
@@ -107,9 +106,9 @@ public partial class SettingsViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ServiceSummary), nameof(Device), nameof(Bios), nameof(WindowsVersion), nameof(NewIssueUri))]
     internal partial AboutInfo? Info { get; set; }
 
-    public string ServiceSummary => Info?.ServiceSummary ?? "Checking…";
+    public string ServiceSummary => Info?.ServiceSummary ?? Text.Get("Settings_Checking");
     public string Device => Info?.Device ?? "";
-    public string Bios => Info?.BiosVersion ?? "Unknown";
+    public string Bios => Info?.BiosVersion ?? Text.Get("Settings_Unknown");
     public string WindowsVersion => Info?.WindowsVersion ?? "";
     public Uri NewIssueUri => Info?.NewIssueUri ?? new($"{AboutInfo.RepositoryUrl}/issues/new");
 
@@ -121,7 +120,7 @@ public partial class SettingsViewModel : ObservableObject
     public bool HasServiceProblem => ServiceProblem.Length > 0;
 
     [ObservableProperty]
-    public partial string CopyLabel { get; set; } = "Copy details";
+    public partial string CopyLabel { get; set; } = Text.Get("Settings_CopyDetails");
 
     [RelayCommand]
     private async Task LoadAsync()
@@ -154,9 +153,9 @@ public partial class SettingsViewModel : ObservableObject
         CanChangeStartAtSignIn = state is StartupTaskState.Enabled or StartupTaskState.Disabled;
         StartupNote = state switch
         {
-            StartupTaskState.DisabledByUser => "Turned off in Task Manager under Startup apps. Turn it on there.",
-            StartupTaskState.DisabledByPolicy => "Turned off by your organization.",
-            StartupTaskState.EnabledByPolicy => "Turned on by your organization.",
+            StartupTaskState.DisabledByUser => Text.Get("Settings_StartupOffByUser"),
+            StartupTaskState.DisabledByPolicy => Text.Get("Settings_StartupOffByPolicy"),
+            StartupTaskState.EnabledByPolicy => Text.Get("Settings_StartupOnByPolicy"),
             _ => "",
         };
     }
@@ -165,7 +164,7 @@ public partial class SettingsViewModel : ObservableObject
     private async Task RestartServiceAsync()
     {
         ServiceProblem = "";
-        Info = Info is null ? null : Info with { Service = null, ServiceProblem = "Restarting…" };
+        Info = Info is null ? null : Info with { Service = null, ServiceProblem = Text.Get("Settings_Restarting") };
         ServiceProblem = await _session.RestartServiceAsync() ?? "";
         await LoadAsync();
     }
@@ -179,6 +178,6 @@ public partial class SettingsViewModel : ObservableObject
         var package = new DataPackage();
         package.SetText(Info.Details);
         Clipboard.SetContent(package);
-        CopyLabel = "Copied";
+        CopyLabel = Text.Get("Settings_Copied");
     }
 }

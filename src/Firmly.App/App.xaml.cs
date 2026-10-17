@@ -88,11 +88,10 @@ public partial class App : Application
 
         Notifications.Register();
         Session.Charge.OverrideEnded += mode =>
-            Notifications.Show("Your timed full charge has ended", $"The battery is back on {mode}.");
+            Notifications.Show(Text.Get("Charge_EndedTitle"), Text.Format("Notify_EndedText", mode));
         Session.Charge.SwitchBackNeedsPassword += mode =>
-            Notifications.Show("Your timed full charge has ended",
-                $"Firmly needs the BIOS password to switch the battery back to {mode}.",
-                "Switch back now", Notifications.SwitchBackAction);
+            Notifications.Show(Text.Get("Charge_EndedTitle"), Text.Format("Notify_NeedsPasswordText", mode),
+                Text.Get("SwitchBackNow"), Notifications.SwitchBackAction);
 
         // Started at sign-in: stay in the notification area until asked.
         var activation = Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs();

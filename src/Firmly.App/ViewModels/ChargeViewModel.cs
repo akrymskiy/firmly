@@ -89,12 +89,12 @@ public partial class ChargeViewModel(FirmlyClient client, Action<FirmwareSnapsho
 
     public IReadOnlyList<OverrideDuration> Durations { get; } =
     [
-        new("1 day", TimeSpan.FromDays(1)),
-        new("2 days", TimeSpan.FromDays(2)),
-        new("3 days", TimeSpan.FromDays(3)),
-        new("1 week", TimeSpan.FromDays(7)),
-        new("2 weeks", TimeSpan.FromDays(14)),
-        new("Until a date…", TimeSpan.Zero, IsCustom: true),
+        new(Text.Get("Duration_1Day"), TimeSpan.FromDays(1)),
+        new(Text.Get("Duration_2Days"), TimeSpan.FromDays(2)),
+        new(Text.Get("Duration_3Days"), TimeSpan.FromDays(3)),
+        new(Text.Get("Duration_1Week"), TimeSpan.FromDays(7)),
+        new(Text.Get("Duration_2Weeks"), TimeSpan.FromDays(14)),
+        new(Text.Get("Duration_Custom"), TimeSpan.Zero, IsCustom: true),
     ];
 
     /// <summary>Index in <see cref="Durations"/>; 3 days to start with.</summary>
@@ -172,7 +172,7 @@ public partial class ChargeViewModel(FirmlyClient client, Action<FirmwareSnapsho
             return;
         }
 
-        var options = modes.Modes.Select(m => new ChargeModeOption(m.Id, m.Label, Explain(m), m.Kind, m.LimitPercent)).ToList();
+        var options = modes.Modes.Select(m => new ChargeModeOption(m.Id, Label(m), Explain(m), m.Kind, m.LimitPercent)).ToList();
         var rebuilt = !options.SequenceEqual(Modes);
         if (rebuilt)
         {
@@ -194,7 +194,7 @@ public partial class ChargeViewModel(FirmlyClient client, Action<FirmwareSnapsho
             OnPropertyChanged(nameof(SelectedIndex));
         Access = snapshot.ChargeModeAccess;
         if (!IsBusy)
-            Note = Access == FirmwareChangeAccess.AdministratorRequired ? "Only administrators can change the charge mode on this device." : "";
+            Note = Access == FirmwareChangeAccess.AdministratorRequired ? Text.Get("Charge_AdminOnly") : "";
 
         // Switch back to the current mode; when that's full charge already, keep the choice (or the first mode).
         var current = RestoreModes.ToList().FindIndex(o => o.Id == modes.CurrentId);
@@ -216,8 +216,8 @@ public partial class ChargeViewModel(FirmlyClient client, Action<FirmwareSnapsho
             var restore = options.FirstOrDefault(o => o.Id == active.RestoreModeId)?.Label ?? active.RestoreModeId;
             if (active.WaitingForPassword)
             {
-                OverrideTitle = "Your timed full charge has ended";
-                OverrideMessage = $"Switching back to {restore} needs the BIOS password.";
+                OverrideTitle = Text.Get("Charge_EndedTitle");
+                OverrideMessage = Text.Format("Charge_WaitingForPassword", restore);
                 if (_askedForPasswordAt != active.Until)
                 {
                     _askedForPasswordAt = active.Until;
@@ -226,10 +226,8 @@ public partial class ChargeViewModel(FirmlyClient client, Action<FirmwareSnapsho
             }
             else
             {
-                OverrideTitle = $"{mode} until {active.Until.ToLocalTime():f}";
-                OverrideMessage = active.KeepsBiosPassword
-                    ? $"Then Firmly switches back to {restore}, with the BIOS password it keeps until then."
-                    : $"Then Firmly switches back to {restore}.";
+                OverrideTitle = Text.Format("Charge_Until", mode, active.Until.ToLocalTime());
+                OverrideMessage = Text.Format(active.KeepsBiosPassword ? "Charge_ThenBackKeepingPassword" : "Charge_ThenBack", restore);
             }
         }
     }
@@ -256,7 +254,7 @@ public partial class ChargeViewModel(FirmlyClient client, Action<FirmwareSnapsho
             // A little short of the service's limit, so a slow click can't push it over.
             if (until <= now.AddMinutes(1) || until > now.AddDays(31).AddMinutes(-1))
             {
-                Note = "Pick a time between now and 31 days from now.";
+                Note = Text.Get("Charge_PickTime");
                 return Task.CompletedTask;
             }
         }
@@ -273,7 +271,7 @@ public partial class ChargeViewModel(FirmlyClient client, Action<FirmwareSnapsho
     private async Task RunAsync(Func<string?, Task<FirmwareSnapshot>> change, bool restoreSelection = false)
     {
         IsBusy = true;
-        Note = "Applying…";
+        Note = Text.Get("Applying");
         try
         {
             var snapshot = await passwords.CallAsync(change);
@@ -292,8 +290,8 @@ public partial class ChargeViewModel(FirmlyClient client, Action<FirmwareSnapsho
         catch (FirmlyServiceException ex)
         {
             IsBusy = false;
-            Note = ex.Message;
-            ChangeFailed?.Invoke(ex.Message);
+            Note = Text.ForError(ex);
+            ChangeFailed?.Invoke(Note);
             // Move the radio buttons back to what the firmware actually holds.
             if (restoreSelection)
                 OnPropertyChanged(nameof(SelectedIndex));
@@ -302,9 +300,12 @@ public partial class ChargeViewModel(FirmlyClient client, Action<FirmwareSnapsho
 
     private static string Explain(ChargeMode mode) => mode.Kind switch
     {
-        ChargeModeKind.Adaptive => "Your device decides when to charge to 100%, based on how you use it.",
-        ChargeModeKind.Limited => $"Stops charging at {mode.LimitPercent ?? 80}% so the battery lasts more years. Best if you're mostly plugged in.",
-        ChargeModeKind.Full => "Charges to 100%. Best when you need every bit of battery, such as when traveling.",
+        ChargeModeKind.Adaptive => Text.Get("Charge_ExplainAdaptive"),
+        ChargeModeKind.Limited => Text.Format("Charge_ExplainLimited", mode.LimitPercent ?? 80),
+        ChargeModeKind.Full => Text.Get("Charge_ExplainFull"),
         _ => "",
     };
+
+    // The vendor's name for the mode, in the user's language when Firmly has it.
+    private static string Label(ChargeMode mode) => Text.GetOr($"ChargeMode_{mode.Id.Replace('-', '_')}", mode.Label);
 }

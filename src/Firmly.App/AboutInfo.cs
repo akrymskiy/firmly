@@ -41,14 +41,14 @@ internal sealed record AboutInfo(
         var os = Environment.OSVersion.Version;
         var windowsVersion = windows?.GetValue("UBR") is int ubr ? $"{os.Major}.{os.Minor}.{os.Build}.{ubr}" : os.ToString();
 
-        return new(Text(bios, "SystemManufacturer"), Text(bios, "SystemProductName"), Text(bios, "BIOSVersion"),
+        return new(Read(bios, "SystemManufacturer"), Read(bios, "SystemProductName"), Read(bios, "BIOSVersion"),
             windowsVersion, status, problem);
     }
 
     /// <summary>e.g. "HP EliteBook 840 G10 Notebook PC".</summary>
     public string Device => (Manufacturer, Model) switch
     {
-        (null, null) => "Unknown device",
+        (null, null) => Text.Get("About_UnknownDevice"),
         (_, null) => Manufacturer!,
         (null, _) => Model!,
         // HP's product names already start with "HP".
@@ -59,9 +59,9 @@ internal sealed record AboutInfo(
     /// <summary>e.g. "0.1.0 (27ce7e2) · HP firmware", or why the service couldn't be reached.</summary>
     public string ServiceSummary => Service switch
     {
-        null => ServiceProblem ?? "Not connected",
-        { Vendor: null } s => $"{FormatVersion(s.ServiceVersion)} · firmware not supported",
-        var s => $"{FormatVersion(s.ServiceVersion)} · {s.Vendor} firmware",
+        null => ServiceProblem ?? Text.Get("About_NotConnected"),
+        { Vendor: null } s => Text.Format("About_FirmwareNotSupported", FormatVersion(s.ServiceVersion)),
+        var s => Text.Format("About_Service", FormatVersion(s.ServiceVersion), s.Vendor),
     };
 
     /// <summary>The details a bug report needs, as plain text.</summary>
@@ -114,6 +114,6 @@ internal sealed record AboutInfo(
         return $"{informational[..plus]} ({commit[..Math.Min(7, commit.Length)]})";
     }
 
-    private static string? Text(RegistryKey? key, string name) =>
+    private static string? Read(RegistryKey? key, string name) =>
         (key?.GetValue(name) as string)?.Trim() is { Length: > 0 } value ? value : null;
 }

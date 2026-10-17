@@ -21,10 +21,10 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel Spacing="2">
-                <TextBlock Text="Firmware" Style="{StaticResource TitleTextBlockStyle}" />
+                <TextBlock x:Uid="Firmware_Title" Style="{StaticResource TitleTextBlockStyle}" />
                 <TextBlock
+                    x:Uid="Firmware_Explanation"
                     Margin="0,4,0,0"
-                    Text="Every setting Firmly may show from your device's BIOS/UEFI, named as the firmware names them."
                     TextWrapping="Wrap" />
                 <TextBlock
                     Text="{x:Bind Session.Status, Mode=OneWay}"
@@ -33,11 +33,10 @@
                     TextWrapping="Wrap" />
             </StackPanel>
             <Button
+                x:Uid="Firmware_Refresh"
                 Grid.Column="1"
                 VerticalAlignment="Center"
-                Command="{x:Bind Session.RefreshCommand}"
-                AutomationProperties.Name="Refresh"
-                ToolTipService.ToolTip="Refresh">
+                Command="{x:Bind Session.RefreshCommand}">
                 <SymbolIcon Symbol="Refresh" />
             </Button>
         </Grid>

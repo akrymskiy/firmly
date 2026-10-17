@@ -63,7 +63,7 @@ public partial class SettingViewModel : ObservableObject
 
         CurrentValue = info.Setting.CurrentValue;
         CanChange = info.Access == FirmwareChangeAccess.Allowed;
-        Note = info.Access == FirmwareChangeAccess.AdministratorRequired ? "Only administrators can change this." : "";
+        Note = info.Access == FirmwareChangeAccess.AdministratorRequired ? Text.Get("Setting_AdminOnly") : "";
     }
 
     /// <summary>Handles SelectionChanged of this card's ComboBox.</summary>
@@ -86,7 +86,7 @@ public partial class SettingViewModel : ObservableObject
     private async Task ApplyAsync(string value)
     {
         IsBusy = true;
-        Note = "Applying…";
+        Note = Text.Get("Applying");
         try
         {
             var updated = await _passwords.CallAsync(password => _client.SetSettingAsync(Name, value, password));
@@ -104,7 +104,7 @@ public partial class SettingViewModel : ObservableObject
         catch (FirmlyServiceException ex)
         {
             IsBusy = false;
-            Note = ex.Message;
+            Note = Text.ForError(ex);
             // Move the ComboBox back to what the firmware actually holds.
             OnPropertyChanged(nameof(SelectedIndex));
             return;

@@ -150,12 +150,12 @@ internal sealed unsafe class TrayController : IDisposable
     // The battery controls are in the flyout; the menu is for Firmly itself.
     private List<TrayMenuItem> BuildMenu() =>
     [
-        new(_session.Battery.HasReading ? _session.Battery.Charge : "No battery reading"),
+        new(_session.Battery.HasReading ? _session.Battery.Charge : Text.Get("Battery_NoReading")),
         TrayMenuItem.Separator,
-        new($"Open {_name}", OpenId),
-        new("Settings", SettingsId),
+        new(Text.Format("Tray_Open", _name), OpenId),
+        new(Text.Get("Tray_Settings"), SettingsId),
         TrayMenuItem.Separator,
-        new("Exit", ExitId),
+        new(Text.Get("Tray_Exit"), ExitId),
     ];
 
     private static void Handle(int id)
@@ -178,6 +178,6 @@ internal sealed unsafe class TrayController : IDisposable
     private void OnChangeFailed(string message)
     {
         if (!App.IsMainWindowVisible && _flyout?.IsOpen != true)
-            _icon.Notify("Couldn't change the battery setting", message, warning: true);
+            _icon.Notify(Text.Get("Tray_ChangeFailed"), message, warning: true);
     }
 }

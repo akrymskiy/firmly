@@ -42,12 +42,12 @@
             OpenPaneLength="240"
             SelectionChanged="OnNavigationSelectionChanged">
             <NavigationView.MenuItems>
-                <NavigationViewItem Content="Battery" Tag="BatteryPage">
+                <NavigationViewItem x:Uid="Main_Battery" Tag="BatteryPage">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE859;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Firmware" Tag="FirmwarePage">
+                <NavigationViewItem x:Uid="Main_Firmware" Tag="FirmwarePage">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE950;" />
                     </NavigationViewItem.Icon>

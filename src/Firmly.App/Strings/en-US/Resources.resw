@@ -1,0 +1,447 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Firmly's words in English. A translation is a copy of this file in Strings\<language>\, e.g. Strings\de-DE\Resources.resw,
+  with each <value> translated; keep {0}, {1}... and names such as Windows Hello. Keys with a dot are XAML (x:Uid.Property).
+-->
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Main_Battery.Content">
+    <value>Battery</value>
+  </data>
+  <data name="Main_Firmware.Content">
+    <value>Firmware</value>
+  </data>
+  <data name="Battery_Title.Text">
+    <value>Battery</value>
+  </data>
+  <data name="Battery_Refresh.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name">
+    <value>Refresh</value>
+  </data>
+  <data name="Battery_Refresh.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip">
+    <value>Refresh</value>
+  </data>
+  <data name="Battery_SwitchBackNow.Content">
+    <value>Switch back now</value>
+  </data>
+  <data name="Battery_ChargeMode.Text">
+    <value>Charge mode</value>
+  </data>
+  <data name="Battery_ChargeModePicker.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name">
+    <value>Charge mode</value>
+  </data>
+  <data name="Battery_FullChargeHeader.Text">
+    <value>Full charge for a while</value>
+  </data>
+  <data name="Battery_FullChargeExplanation.Text">
+    <value>Charges to 100% now, and switches back by itself when the time is up, even if Firmly isn't open. Handy before a trip.</value>
+  </data>
+  <data name="Battery_For.Text">
+    <value>For</value>
+  </data>
+  <data name="Battery_HowLong.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name">
+    <value>How long</value>
+  </data>
+  <data name="Battery_UntilTheDay.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name">
+    <value>Until the day</value>
+  </data>
+  <data name="Battery_At.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name">
+    <value>At</value>
+  </data>
+  <data name="Battery_Then.Text">
+    <value>then</value>
+  </data>
+  <data name="Battery_ThenSwitchBackTo.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name">
+    <value>Then switch back to</value>
+  </data>
+  <data name="Battery_Start.Content">
+    <value>Start</value>
+  </data>
+  <data name="Firmware_Title.Text">
+    <value>Firmware</value>
+  </data>
+  <data name="Firmware_Explanation.Text">
+    <value>Every setting Firmly may show from your device's BIOS/UEFI, named as the firmware names them.</value>
+  </data>
+  <data name="Firmware_Refresh.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name">
+    <value>Refresh</value>
+  </data>
+  <data name="Firmware_Refresh.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip">
+    <value>Refresh</value>
+  </data>
+  <data name="Settings_Title.Text">
+    <value>Settings</value>
+  </data>
+  <data name="Settings_General.Text">
+    <value>General</value>
+  </data>
+  <data name="Settings_CloseToTray.Text">
+    <value>Keep running when the window is closed</value>
+  </data>
+  <data name="Settings_CloseToTrayExplanation.Text">
+    <value>Firmly stays in the notification area, next to the clock. To quit, right-click its icon and choose Exit.</value>
+  </data>
+  <data name="Settings_CloseToTraySwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name">
+    <value>Keep running when the window is closed</value>
+  </data>
+  <data name="Settings_StartAtSignIn.Text">
+    <value>Start when you sign in</value>
+  </data>
+  <data name="Settings_StartAtSignInExplanation.Text">
+    <value>Firmly starts in the notification area, without opening its window.</value>
+  </data>
+  <data name="Settings_StartAtSignInSwitch.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name">
+    <value>Start when you sign in</value>
+  </data>
+  <data name="Settings_BiosPasswordHeader.Text">
+    <value>BIOS password</value>
+  </data>
+  <data name="Settings_BiosPassword.Text">
+    <value>BIOS administrator password</value>
+  </data>
+  <data name="Settings_BiosPasswordExplanation.Text">
+    <value>This PC's BIOS has one, so Firmly asks for it before changing settings.</value>
+  </data>
+  <data name="Settings_Forget.Content">
+    <value>Forget</value>
+  </data>
+  <data name="Settings_Forget.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name">
+    <value>Forget the saved BIOS password</value>
+  </data>
+  <data name="Settings_SwitchBack.Text">
+    <value>When a timed full charge ends</value>
+  </data>
+  <data name="Settings_SwitchBackPicker.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name">
+    <value>When a timed full charge ends</value>
+  </data>
+  <data name="Settings_SwitchBackAsk.Content">
+    <value>Ask me, with Windows Hello or the password</value>
+  </data>
+  <data name="Settings_SwitchBackAlone.Content">
+    <value>Switch back by itself: Firmly's service keeps the password, encrypted, until then</value>
+  </data>
+  <data name="Settings_Service.Text">
+    <value>Service</value>
+  </data>
+  <data name="Settings_FirmlyService.Text">
+    <value>Firmly service</value>
+  </data>
+  <data name="Settings_Restart.Text">
+    <value>Restart</value>
+  </data>
+  <data name="Settings_About.Text">
+    <value>About</value>
+  </data>
+  <data name="Settings_Device.Text">
+    <value>Device</value>
+  </data>
+  <data name="Settings_Bios.Text">
+    <value>BIOS</value>
+  </data>
+  <data name="Settings_Windows.Text">
+    <value>Windows</value>
+  </data>
+  <data name="Settings_Help.Content">
+    <value>Help</value>
+  </data>
+  <data name="Settings_ReportAProblem.Content">
+    <value>Report a problem</value>
+  </data>
+  <data name="Settings_SourceCode.Content">
+    <value>Source code</value>
+  </data>
+  <data name="Settings_License.Content">
+    <value>MIT License</value>
+  </data>
+  <data name="Flyout_SwitchBackNow.Content">
+    <value>Switch back now</value>
+  </data>
+  <data name="Flyout_ChargeMode.Text">
+    <value>Charge mode</value>
+  </data>
+  <data name="Flyout_ChargeModePicker.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name">
+    <value>Charge mode</value>
+  </data>
+  <data name="Flyout_FullChargeFor.Content">
+    <value>Full charge for…</value>
+  </data>
+  <data name="Flyout_Settings.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name">
+    <value>Settings</value>
+  </data>
+  <data name="Flyout_Settings.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip">
+    <value>Settings</value>
+  </data>
+  <data name="About_FirmwareNotSupported">
+    <value>{0} · firmware not supported</value>
+  </data>
+  <data name="About_NotConnected">
+    <value>Not connected</value>
+  </data>
+  <data name="About_Service">
+    <value>{0} · {1} firmware</value>
+  </data>
+  <data name="About_UnknownDevice">
+    <value>Unknown device</value>
+  </data>
+  <data name="Applying">
+    <value>Applying…</value>
+  </data>
+  <data name="Battery_Charge">
+    <value>Battery {0}%</value>
+  </data>
+  <data name="Battery_ChargeAtLeast">
+    <value>Battery {0}% or more</value>
+  </data>
+  <data name="Battery_Charging">
+    <value>charging</value>
+  </data>
+  <data name="Battery_FullyCharged">
+    <value>fully charged</value>
+  </data>
+  <data name="Battery_LimitedTo">
+    <value>limited to {0}%</value>
+  </data>
+  <data name="Battery_NoReading">
+    <value>No battery reading</value>
+  </data>
+  <data name="Battery_OnBattery">
+    <value>on battery</value>
+  </data>
+  <data name="Battery_PluggedInNotCharging">
+    <value>plugged in, not charging</value>
+  </data>
+  <data name="Battery_WindowsShows">
+    <value>Windows shows {0}%</value>
+  </data>
+  <data name="Cancel">
+    <value>Cancel</value>
+  </data>
+  <data name="ChargeMode_hp_let_hp_manage">
+    <value>Let HP Manage My Battery Health</value>
+    <comment>HP's own name for this mode, as in its BIOS and documentation; use HP's translation if it has one.</comment>
+  </data>
+  <data name="ChargeMode_hp_maximize">
+    <value>Maximize Battery Health Management</value>
+    <comment>HP's own name for this mode, as in its BIOS and documentation; use HP's translation if it has one.</comment>
+  </data>
+  <data name="ChargeMode_hp_minimize">
+    <value>Minimize Battery Health Management</value>
+    <comment>HP's own name for this mode, as in its BIOS and documentation; use HP's translation if it has one.</comment>
+  </data>
+  <data name="Charge_AdminOnly">
+    <value>Only administrators can change the charge mode on this device.</value>
+  </data>
+  <data name="Charge_EndedTitle">
+    <value>Your timed full charge has ended</value>
+  </data>
+  <data name="Charge_ExplainAdaptive">
+    <value>Your device decides when to charge to 100%, based on how you use it.</value>
+  </data>
+  <data name="Charge_ExplainFull">
+    <value>Charges to 100%. Best when you need every bit of battery, such as when traveling.</value>
+  </data>
+  <data name="Charge_ExplainLimited">
+    <value>Stops charging at {0}% so the battery lasts more years. Best if you're mostly plugged in.</value>
+  </data>
+  <data name="Charge_PickTime">
+    <value>Pick a time between now and 31 days from now.</value>
+  </data>
+  <data name="Charge_ThenBack">
+    <value>Then Firmly switches back to {0}.</value>
+  </data>
+  <data name="Charge_ThenBackKeepingPassword">
+    <value>Then Firmly switches back to {0}, with the BIOS password it keeps until then.</value>
+  </data>
+  <data name="Charge_Until">
+    <value>{0} until {1:f}</value>
+    <comment>{0}: a charge mode; {1}: date and time.</comment>
+  </data>
+  <data name="Charge_WaitingForPassword">
+    <value>Switching back to {0} needs the BIOS password.</value>
+  </data>
+  <data name="Duration_1Day">
+    <value>1 day</value>
+  </data>
+  <data name="Duration_1Week">
+    <value>1 week</value>
+  </data>
+  <data name="Duration_2Days">
+    <value>2 days</value>
+  </data>
+  <data name="Duration_2Weeks">
+    <value>2 weeks</value>
+  </data>
+  <data name="Duration_3Days">
+    <value>3 days</value>
+  </data>
+  <data name="Duration_Custom">
+    <value>Until a date…</value>
+  </data>
+  <data name="Error_AdministratorRequired">
+    <value>Only administrators can make this change on this PC.</value>
+  </data>
+  <data name="Error_BiosPasswordRequired">
+    <value>The BIOS administrator password is missing or wrong.</value>
+  </data>
+  <data name="Error_IncompatibleService">
+    <value>The Firmly service doesn't match this version of the app. Restart the service, or reinstall Firmly.</value>
+  </data>
+  <data name="Error_ServiceUnavailable">
+    <value>The Firmly service is not running or did not respond.</value>
+  </data>
+  <data name="Error_Unsupported">
+    <value>This device's firmware isn't supported yet.</value>
+  </data>
+  <data name="Flyout_ThenBackTo">
+    <value>Then back to {0}</value>
+  </data>
+  <data name="Notify_EndedText">
+    <value>The battery is back on {0}.</value>
+  </data>
+  <data name="Notify_NeedsPasswordText">
+    <value>Firmly needs the BIOS password to switch the battery back to {0}.</value>
+  </data>
+  <data name="OK">
+    <value>OK</value>
+  </data>
+  <data name="Password_Explanation">
+    <value>This PC's BIOS has an administrator password. Firmly passes it to the BIOS for this change, and keeps it only if you ask.</value>
+  </data>
+  <data name="Password_Header">
+    <value>Password</value>
+  </data>
+  <data name="Password_RejectedMessage">
+    <value>Check it and try again. After several wrong tries, a BIOS may refuse changes until the PC restarts.</value>
+  </data>
+  <data name="Password_RejectedTitle">
+    <value>The BIOS didn't accept the password.</value>
+  </data>
+  <data name="Password_Remember">
+    <value>Remember it on this PC, unlocked with Windows Hello</value>
+  </data>
+  <data name="Password_Title">
+    <value>BIOS administrator password</value>
+  </data>
+  <data name="Separator" xml:space="preserve">
+    <value> · </value>
+    <comment>Between parts of the battery details, e.g. "plugged in, not charging · limited to 80%".</comment>
+  </data>
+  <data name="Service_DidntStart">
+    <value>The Firmly service didn't start again. Its entries in the Windows event log may say why.</value>
+  </data>
+  <data name="Service_NotInstalled">
+    <value>The Firmly service isn't installed on this PC. Reinstall Firmly to add it.</value>
+  </data>
+  <data name="Setting_AdminOnly">
+    <value>Only administrators can change this.</value>
+  </data>
+  <data name="Settings_Checking">
+    <value>Checking…</value>
+  </data>
+  <data name="Settings_Copied">
+    <value>Copied</value>
+  </data>
+  <data name="Settings_CopyDetails">
+    <value>Copy details</value>
+  </data>
+  <data name="Settings_Legal">
+    <value>{0}. Firmly is not affiliated with HP Inc. or any other hardware vendor. Changing firmware settings is at your own risk.</value>
+  </data>
+  <data name="Settings_PasswordNotAllowed">
+    <value>Your organization doesn't allow saving it, so Firmly asks for it each time.</value>
+  </data>
+  <data name="Settings_PasswordNotSaved">
+    <value>Not saved. To save it, choose “Remember it” when Firmly asks for it.</value>
+  </data>
+  <data name="Settings_PasswordSaved">
+    <value>Saved on this PC, unlocked with Windows Hello.</value>
+  </data>
+  <data name="Settings_Restarting">
+    <value>Restarting…</value>
+  </data>
+  <data name="Settings_StartupOffByPolicy">
+    <value>Turned off by your organization.</value>
+  </data>
+  <data name="Settings_StartupOffByUser">
+    <value>Turned off in Task Manager under Startup apps. Turn it on there.</value>
+  </data>
+  <data name="Settings_StartupOnByPolicy">
+    <value>Turned on by your organization.</value>
+  </data>
+  <data name="Settings_Unknown">
+    <value>Unknown</value>
+  </data>
+  <data name="Settings_Version">
+    <value>Version {0}</value>
+  </data>
+  <data name="Status_Connecting">
+    <value>Connecting to the Firmly service…</value>
+  </data>
+  <data name="Status_Firmware">
+    <value>{0} firmware</value>
+  </data>
+  <data name="Status_FirmwareAdminOnly">
+    <value>{0} firmware · changes are limited to administrators on this device</value>
+  </data>
+  <data name="Status_NotConnected">
+    <value>Not connected to the Firmly service yet.</value>
+  </data>
+  <data name="Status_Restarting">
+    <value>Restarting the Firmly service…</value>
+  </data>
+  <data name="Status_Unsupported">
+    <value>This device's firmware isn't supported yet.</value>
+  </data>
+  <data name="SwitchBackNow">
+    <value>Switch back now</value>
+  </data>
+  <data name="Tray_ChangeFailed">
+    <value>Couldn't change the battery setting</value>
+  </data>
+  <data name="Tray_Exit">
+    <value>Exit</value>
+  </data>
+  <data name="Tray_Open">
+    <value>Open {0}</value>
+  </data>
+  <data name="Tray_Settings">
+    <value>Settings</value>
+  </data>
+</root>

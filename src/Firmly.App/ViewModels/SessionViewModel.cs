@@ -13,7 +13,7 @@ public partial class SessionViewModel : ObservableObject
 
     public SessionViewModel()
     {
-        Status = "Not connected to the Firmly service yet.";
+        Status = Text.Get("Status_NotConnected");
         Charge = new ChargeViewModel(_client, Show, Passwords);
     }
 
@@ -63,7 +63,7 @@ public partial class SessionViewModel : ObservableObject
     private async Task LoadAsync(bool quiet)
     {
         if (!quiet)
-            Status = "Connecting to the Firmly service…";
+            Status = Text.Get("Status_Connecting");
         try
         {
             var status = await _client.GetStatusAsync();
@@ -73,20 +73,20 @@ public partial class SessionViewModel : ObservableObject
             {
                 Settings.Clear();
                 Charge.Clear();
-                Status = "This device's firmware isn't supported yet.";
+                Status = Text.Get("Status_Unsupported");
                 return;
             }
 
             Show(await _client.GetSettingsAsync());
             Status = status.RequireAdminForAllChanges && !status.IsAdministrator
-                ? $"{status.Vendor} firmware · changes are limited to administrators on this device"
-                : $"{status.Vendor} firmware";
+                ? Text.Format("Status_FirmwareAdminOnly", status.Vendor)
+                : Text.Format("Status_Firmware", status.Vendor);
         }
         catch (FirmlyServiceException ex)
         {
             Settings.Clear();
             Charge.Clear();
-            Status = ex.Message;
+            Status = Text.ForError(ex);
         }
     }
 
@@ -94,15 +94,15 @@ public partial class SessionViewModel : ObservableObject
     /// <returns>Why it didn't work, or null when it did (or the user declined the prompt).</returns>
     public async Task<string?> RestartServiceAsync()
     {
-        Status = "Restarting the Firmly service…";
+        Status = Text.Get("Status_Restarting");
         string? problem = null;
         switch (await ServiceControl.RestartAsync())
         {
             case ServiceRestartResult.NotInstalled:
-                problem = "The Firmly service isn't installed on this PC. Reinstall Firmly to add it.";
+                problem = Text.Get("Service_NotInstalled");
                 break;
             case ServiceRestartResult.Failed:
-                problem = "The Firmly service didn't start again. Its entries in the Windows event log may say why.";
+                problem = Text.Get("Service_DidntStart");
                 break;
         }
 
@@ -119,7 +119,7 @@ public partial class SessionViewModel : ObservableObject
         }
         catch (FirmlyServiceException ex)
         {
-            Status = ex.Message;
+            Status = Text.ForError(ex);
         }
     }
 

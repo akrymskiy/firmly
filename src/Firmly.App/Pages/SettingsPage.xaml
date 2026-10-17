@@ -6,9 +6,9 @@
 
     <ScrollViewer>
         <StackPanel Padding="32,16,32,24" Spacing="4">
-            <TextBlock Margin="0,0,0,12" Text="Settings" Style="{StaticResource TitleTextBlockStyle}" />
+            <TextBlock x:Uid="Settings_Title" Margin="0,0,0,12" Style="{StaticResource TitleTextBlockStyle}" />
 
-            <TextBlock Text="General" Style="{StaticResource SectionHeaderStyle}" />
+            <TextBlock x:Uid="Settings_General" Style="{StaticResource SectionHeaderStyle}" />
             <Grid Style="{StaticResource CardStyle}" ColumnSpacing="16" Visibility="{x:Bind ViewModel.HasTray}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
@@ -17,17 +17,17 @@
                 </Grid.ColumnDefinitions>
                 <FontIcon VerticalAlignment="Center" Glyph="&#xE8A7;" />
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock Text="Keep running when the window is closed" />
+                    <TextBlock x:Uid="Settings_CloseToTray" />
                     <TextBlock
-                        Text="Firmly stays in the notification area, next to the clock. To quit, right-click its icon and choose Exit."
+                        x:Uid="Settings_CloseToTrayExplanation"
                         Style="{StaticResource CaptionTextBlockStyle}"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         TextWrapping="Wrap" />
                 </StackPanel>
                 <ToggleSwitch
+                    x:Uid="Settings_CloseToTraySwitch"
                     Grid.Column="2"
                     MinWidth="0"
-                    AutomationProperties.Name="Keep running when the window is closed"
                     IsOn="{x:Bind ViewModel.CloseToTray, Mode=TwoWay}" />
             </Grid>
             <Grid Style="{StaticResource CardStyle}" ColumnSpacing="16">
@@ -38,9 +38,9 @@
                 </Grid.ColumnDefinitions>
                 <FontIcon VerticalAlignment="Center" Glyph="&#xE7E8;" />
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock Text="Start when you sign in" />
+                    <TextBlock x:Uid="Settings_StartAtSignIn" />
                     <TextBlock
-                        Text="Firmly starts in the notification area, without opening its window."
+                        x:Uid="Settings_StartAtSignInExplanation"
                         Style="{StaticResource CaptionTextBlockStyle}"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         TextWrapping="Wrap" />
@@ -52,15 +52,15 @@
                         TextWrapping="Wrap" />
                 </StackPanel>
                 <ToggleSwitch
+                    x:Uid="Settings_StartAtSignInSwitch"
                     Grid.Column="2"
                     MinWidth="0"
-                    AutomationProperties.Name="Start when you sign in"
                     IsOn="{x:Bind ViewModel.StartAtSignIn, Mode=TwoWay}"
                     IsEnabled="{x:Bind ViewModel.CanChangeStartAtSignIn, Mode=OneWay}" />
             </Grid>
 
             <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.ShowsBiosPassword, Mode=OneWay}">
-                <TextBlock Text="BIOS password" Style="{StaticResource SectionHeaderStyle}" />
+                <TextBlock x:Uid="Settings_BiosPasswordHeader" Style="{StaticResource SectionHeaderStyle}" />
                 <Grid Style="{StaticResource CardStyle}" ColumnSpacing="16">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -69,9 +69,9 @@
                     </Grid.ColumnDefinitions>
                     <FontIcon VerticalAlignment="Center" Glyph="&#xE72E;" />
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="BIOS administrator password" />
+                        <TextBlock x:Uid="Settings_BiosPassword" />
                         <TextBlock
-                            Text="This PC's BIOS has one, so Firmly asks for it before changing settings."
+                            x:Uid="Settings_BiosPasswordExplanation"
                             Style="{StaticResource CaptionTextBlockStyle}"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             TextWrapping="Wrap" />
@@ -82,10 +82,9 @@
                             TextWrapping="Wrap" />
                     </StackPanel>
                     <Button
+                        x:Uid="Settings_Forget"
                         Grid.Column="2"
                         VerticalAlignment="Center"
-                        Content="Forget"
-                        AutomationProperties.Name="Forget the saved BIOS password"
                         Visibility="{x:Bind ViewModel.HasSavedPassword, Mode=OneWay}"
                         Command="{x:Bind ViewModel.ForgetPasswordCommand}" />
                 </Grid>
@@ -96,20 +95,20 @@
                     </Grid.ColumnDefinitions>
                     <FontIcon VerticalAlignment="Top" Margin="0,4,0,0" Glyph="&#xE823;" />
                     <StackPanel Grid.Column="1" Spacing="4">
-                        <TextBlock Text="When a timed full charge ends" />
+                        <TextBlock x:Uid="Settings_SwitchBack" />
                         <!-- Two-way: the choice is a plain preference, kept by the view model. -->
                         <RadioButtons
-                            AutomationProperties.Name="When a timed full charge ends"
+                            x:Uid="Settings_SwitchBackPicker"
                             SelectedIndex="{x:Bind ViewModel.SwitchBackChoice, Mode=TwoWay}"
                             IsEnabled="{x:Bind ViewModel.AllowSavedPassword, Mode=OneWay}">
-                            <RadioButton Content="Ask me, with Windows Hello or the password" />
-                            <RadioButton Content="Switch back by itself: Firmly's service keeps the password, encrypted, until then" />
+                            <RadioButton x:Uid="Settings_SwitchBackAsk" />
+                            <RadioButton x:Uid="Settings_SwitchBackAlone" />
                         </RadioButtons>
                     </StackPanel>
                 </Grid>
             </StackPanel>
 
-            <TextBlock Text="Service" Style="{StaticResource SectionHeaderStyle}" />
+            <TextBlock x:Uid="Settings_Service" Style="{StaticResource SectionHeaderStyle}" />
             <Grid Style="{StaticResource CardStyle}" ColumnSpacing="16">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
@@ -118,7 +117,7 @@
                 </Grid.ColumnDefinitions>
                 <FontIcon VerticalAlignment="Center" Glyph="&#xE912;" />
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock Text="Firmly service" />
+                    <TextBlock x:Uid="Settings_FirmlyService" />
                     <TextBlock
                         Text="{x:Bind ViewModel.ServiceSummary, Mode=OneWay}"
                         Style="{StaticResource CaptionTextBlockStyle}"
@@ -136,12 +135,12 @@
                 <Button Grid.Column="2" VerticalAlignment="Center" Command="{x:Bind ViewModel.RestartServiceCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon FontSize="16" Glyph="&#xEA18;" />
-                        <TextBlock Text="Restart" />
+                        <TextBlock x:Uid="Settings_Restart" />
                     </StackPanel>
                 </Button>
             </Grid>
 
-            <TextBlock Text="About" Style="{StaticResource SectionHeaderStyle}" />
+            <TextBlock x:Uid="Settings_About" Style="{StaticResource SectionHeaderStyle}" />
             <Grid Style="{StaticResource CardStyle}" ColumnSpacing="16" RowSpacing="12">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
@@ -183,20 +182,20 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <TextBlock Text="Device" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <TextBlock x:Uid="Settings_Device" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                     <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.Device, Mode=OneWay}" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
-                    <TextBlock Grid.Row="1" Text="BIOS" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <TextBlock x:Uid="Settings_Bios" Grid.Row="1" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                     <TextBlock Grid.Row="1" Grid.Column="1" Text="{x:Bind ViewModel.Bios, Mode=OneWay}" IsTextSelectionEnabled="True" />
-                    <TextBlock Grid.Row="2" Text="Windows" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <TextBlock x:Uid="Settings_Windows" Grid.Row="2" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                     <TextBlock Grid.Row="2" Grid.Column="1" Text="{x:Bind ViewModel.WindowsVersion, Mode=OneWay}" IsTextSelectionEnabled="True" />
                 </Grid>
             </Grid>
 
             <StackPanel Margin="-12,8,0,0" Orientation="Horizontal">
-                <HyperlinkButton Content="Help" NavigateUri="{x:Bind ViewModel.HelpUri}" />
-                <HyperlinkButton Content="Report a problem" NavigateUri="{x:Bind ViewModel.NewIssueUri, Mode=OneWay}" />
-                <HyperlinkButton Content="Source code" NavigateUri="{x:Bind ViewModel.SourceUri}" />
-                <HyperlinkButton Content="MIT License" NavigateUri="{x:Bind ViewModel.LicenseUri}" />
+                <HyperlinkButton x:Uid="Settings_Help" NavigateUri="{x:Bind ViewModel.HelpUri}" />
+                <HyperlinkButton x:Uid="Settings_ReportAProblem" NavigateUri="{x:Bind ViewModel.NewIssueUri, Mode=OneWay}" />
+                <HyperlinkButton x:Uid="Settings_SourceCode" NavigateUri="{x:Bind ViewModel.SourceUri}" />
+                <HyperlinkButton x:Uid="Settings_License" NavigateUri="{x:Bind ViewModel.LicenseUri}" />
             </StackPanel>
 
             <TextBlock

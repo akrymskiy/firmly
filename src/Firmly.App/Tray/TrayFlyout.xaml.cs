@@ -90,7 +90,7 @@ public sealed unsafe partial class TrayFlyout : Window
 
     public SessionViewModel Session => App.Session;
 
-    public string OpenText { get; } = $"Open {Package.Current.DisplayName}";
+    public string OpenText { get; } = Text.Format("Tray_Open", Package.Current.DisplayName);
 
     public bool IsOpen => AppWindow.IsVisible;
 
@@ -206,7 +206,7 @@ public sealed unsafe partial class TrayFlyout : Window
         visual.StartAnimation("Opacity", fade);
     }
 
-    public string ChargeOrNone(string charge) => charge.Length > 0 ? charge : "No battery reading";
+    public string ChargeOrNone(string charge) => charge.Length > 0 ? charge : Text.Get("Battery_NoReading");
 
     // The binding only ever selects the firmware's current mode (one-way), so another selection is the user's pick.
     private void OnModeSelectionChanged(object sender, SelectionChangedEventArgs e) =>
@@ -219,7 +219,7 @@ public sealed unsafe partial class TrayFlyout : Window
         DurationMenu.Items.Clear();
         if (charge.RestoreIndex >= 0 && charge.RestoreIndex < charge.RestoreModes.Count)
         {
-            DurationMenu.Items.Add(new MenuFlyoutItem { Text = $"Then back to {charge.RestoreModes[charge.RestoreIndex].Label}", IsEnabled = false });
+            DurationMenu.Items.Add(new MenuFlyoutItem { Text = Text.Format("Flyout_ThenBackTo", charge.RestoreModes[charge.RestoreIndex].Label), IsEnabled = false });
             DurationMenu.Items.Add(new MenuFlyoutSeparator());
         }
 
