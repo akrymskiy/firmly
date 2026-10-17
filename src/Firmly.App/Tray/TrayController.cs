@@ -2,21 +2,23 @@ using System.ComponentModel;
 using Firmly.App.ViewModels;
 using Microsoft.Win32;
 using Windows.ApplicationModel;
+using Windows.Graphics;
 using static Firmly.App.Tray.NativeMethods;
 
 namespace Firmly.App.Tray;
 
 /// <summary>
 /// Keeps the tray icon (a battery drawn to match the charge), its tooltip and menu, and the taskbar badge in step
-/// with the session, and acts on what's chosen in the menu.
+/// with the session, and acts on what's chosen in the menu. Clicking the icon opens <see cref="TrayFlyout"/>.
 /// </summary>
 internal sealed unsafe class TrayController : IDisposable
 {
-    private const int OpenId = 1, ExitId = 2, SwitchBackId = 3, FirstModeId = 100, FirstDurationId = 200;
+    private const int OpenId = 1, SettingsId = 2, ExitId = 3;
 
     private readonly SessionViewModel _session;
     private readonly TrayIcon _icon = new();
     private readonly string _name = Package.Current.DisplayName;
+    private TrayFlyout? _flyout;
     private nint _iconHandle;
     // What _iconHandle shows, so it's only redrawn when that changes.
     private (BatteryIconState State, int Size, bool LightTaskbar)? _drawn;
@@ -27,7 +29,7 @@ internal sealed unsafe class TrayController : IDisposable
 
         // The icon's events arrive inside its native window procedure. Act once that has returned: closing the
         // main window from in there fails, which made Exit do nothing.
-        _icon.Selected += () => App.DispatcherQueue.TryEnqueue(App.ShowMainWindow);
+        _icon.Selected += (bounds, keyboard) => App.DispatcherQueue.TryEnqueue(() => ToggleFlyout(bounds, keyboard));
         _icon.MenuRequested += OnMenuRequested;
         _icon.ThemeChanged += Update;
         _session.PropertyChanged += OnStateChanged;
@@ -43,11 +45,20 @@ internal sealed unsafe class TrayController : IDisposable
         _session.Battery.PropertyChanged -= OnStateChanged;
         _session.Charge.PropertyChanged -= OnStateChanged;
         _session.Charge.ChangeFailed -= OnChangeFailed;
+        // A hidden window left open would keep Firmly running.
+        _flyout?.CloseForGood();
         _icon.Dispose();
         DestroyIcon(_iconHandle);
     }
 
     private void OnStateChanged(object? sender, PropertyChangedEventArgs e) => Update();
+
+    // Made on first use, then kept: a new window takes a moment to appear.
+    private void ToggleFlyout(RectInt32 bounds, bool keyboard)
+    {
+        _flyout ??= new TrayFlyout();
+        _flyout.Toggle(bounds, keyboard);
+    }
 
     /// <summary>Redraws the icon if what it shows changed, and refreshes the tooltip and taskbar badge.</summary>
     public void Update()
@@ -136,74 +147,37 @@ internal sealed unsafe class TrayController : IDisposable
         });
     }
 
-    private List<TrayMenuItem> BuildMenu()
+    // The battery controls are in the flyout; the menu is for Firmly itself.
+    private List<TrayMenuItem> BuildMenu() =>
+    [
+        new(_session.Battery.HasReading ? _session.Battery.Charge : "No battery reading"),
+        TrayMenuItem.Separator,
+        new($"Open {_name}", OpenId),
+        new("Settings", SettingsId),
+        TrayMenuItem.Separator,
+        new("Exit", ExitId),
+    ];
+
+    private static void Handle(int id)
     {
-        var charge = _session.Charge;
-        var battery = _session.Battery;
-        List<TrayMenuItem> items = [new(battery.HasReading ? battery.Charge : "No battery reading"), TrayMenuItem.Separator];
-
-        if (charge.HasModes)
-        {
-            for (var i = 0; i < charge.Modes.Count; i++)
-                items.Add(new(charge.Modes[i].Label, FirstModeId + i, charge.CanChange, Checked: i == charge.SelectedIndex, Radio: true));
-
-            if (charge.HasOverride)
-            {
-                items.Add(TrayMenuItem.Separator);
-                items.Add(new(charge.OverrideTitle));
-                items.Add(new("Switch back now", SwitchBackId, charge.CanChange));
-            }
-            else if (charge.IsOverrideOffered && charge.RestoreIndex >= 0 && charge.RestoreIndex < charge.RestoreModes.Count)
-            {
-                List<TrayMenuItem> durations =
-                [
-                    new($"Then back to {charge.RestoreModes[charge.RestoreIndex].Label}"),
-                    TrayMenuItem.Separator,
-                    .. charge.Durations.Select((d, i) => new TrayMenuItem(d.Label, FirstDurationId + i, charge.CanChange)),
-                ];
-                items.Add(TrayMenuItem.Separator);
-                items.Add(new("Full charge for", Children: durations));
-            }
-        }
-        else
-        {
-            items.Add(new(_session.Status));
-        }
-
-        items.Add(TrayMenuItem.Separator);
-        items.Add(new($"Open {_name}", OpenId, IsDefault: true));
-        items.Add(new("Exit", ExitId));
-        return items;
-    }
-
-    private void Handle(int id)
-    {
-        var charge = _session.Charge;
         switch (id)
         {
             case OpenId:
                 App.ShowMainWindow();
                 break;
+            case SettingsId:
+                App.ShowSettings();
+                break;
             case ExitId:
                 App.ExitApp();
-                break;
-            case SwitchBackId:
-                charge.SwitchBackNowCommand.Execute(null);
-                break;
-            case >= FirstDurationId when id - FirstDurationId < charge.Durations.Count:
-                charge.DurationIndex = id - FirstDurationId;
-                charge.StartOverrideCommand.Execute(null);
-                break;
-            case >= FirstModeId and < FirstDurationId:
-                charge.RequestMode(id - FirstModeId);
                 break;
         }
     }
 
-    // Changes made from the tray menu would otherwise fail silently while the window is hidden.
+    // A change made from the flyout would otherwise fail silently if it was closed meanwhile.
     private void OnChangeFailed(string message)
     {
-        if (!App.IsMainWindowVisible)
+        if (!App.IsMainWindowVisible && _flyout?.IsOpen != true)
             _icon.Notify("Couldn't change the battery setting", message, warning: true);
     }
 }

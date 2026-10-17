@@ -1,19 +1,11 @@
 using System.Runtime.InteropServices;
+using Windows.Graphics;
 using static Firmly.App.Tray.NativeMethods;
 
 namespace Firmly.App.Tray;
 
 /// <summary>An entry in the tray icon's menu. <see cref="Id"/> 0 marks a heading or separator that can't be chosen.</summary>
-/// <param name="Radio">Shows <paramref name="Checked"/> as a dot, for one-of-several choices.</param>
-/// <param name="IsDefault">Shown in bold: what clicking the icon does.</param>
-internal sealed record TrayMenuItem(
-    string Text,
-    int Id = 0,
-    bool Enabled = true,
-    bool Checked = false,
-    bool Radio = false,
-    bool IsDefault = false,
-    IReadOnlyList<TrayMenuItem>? Children = null)
+internal sealed record TrayMenuItem(string Text, int Id = 0)
 {
     public static TrayMenuItem Separator { get; } = new("-");
 }
@@ -60,8 +52,8 @@ internal sealed unsafe class TrayIcon : IDisposable
         s_current = this;
     }
 
-    /// <summary>Clicked, or chosen with the keyboard.</summary>
-    public event Action? Selected;
+    /// <summary>Clicked, or chosen with the keyboard (true); carries where the icon is, in screen pixels.</summary>
+    public event Action<RectInt32, bool>? Selected;
 
     /// <summary>Right-clicked, or the menu key pressed; the menu should open at the given screen point.</summary>
     public event Action<int, int>? MenuRequested;
@@ -114,7 +106,6 @@ internal sealed unsafe class TrayIcon : IDisposable
         }
         finally
         {
-            // Also destroys the submenus.
             DestroyMenu(menu);
         }
     }
@@ -130,6 +121,16 @@ internal sealed unsafe class TrayIcon : IDisposable
         DestroyWindow(_hwnd);
         if (s_current == this)
             s_current = null;
+    }
+
+    // Where the icon is; just the anchor point when the shell won't say.
+    private RectInt32 Bounds(int anchorX, int anchorY)
+    {
+        var identifier = new NOTIFYICONIDENTIFIER { cbSize = (uint)sizeof(NOTIFYICONIDENTIFIER), hWnd = _hwnd, uID = 1 };
+        RECT rect;
+        return Shell_NotifyIconGetRect(&identifier, &rect) >= 0
+            ? new RectInt32(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top)
+            : new RectInt32(anchorX, anchorY, 1, 1);
     }
 
     private void Add()
@@ -177,18 +178,7 @@ internal sealed unsafe class TrayIcon : IDisposable
                 continue;
             }
 
-            var flags = MF_STRING | (item.Enabled && (item.Id != 0 || item.Children is not null) ? 0 : MF_GRAYED);
-            if (item.Children is { } children)
-            {
-                AppendMenu(menu, flags | MF_POPUP, (nuint)BuildMenu(children), item.Text);
-                continue;
-            }
-
-            AppendMenu(menu, flags | (item.Checked && !item.Radio ? MF_CHECKED : 0), (nuint)item.Id, item.Text);
-            if (item.Checked && item.Radio)
-                CheckMenuRadioItem(menu, (uint)item.Id, (uint)item.Id, (uint)item.Id, MF_BYCOMMAND);
-            if (item.IsDefault)
-                SetMenuDefaultItem(menu, (uint)item.Id, 0);
+            AppendMenu(menu, MF_STRING | (item.Id != 0 ? 0 : MF_GRAYED), (nuint)item.Id, item.Text);
         }
         return menu;
     }
@@ -207,8 +197,8 @@ internal sealed unsafe class TrayIcon : IDisposable
                     var anchorY = (short)((wParam >> 16) & 0xFFFF);
                     switch ((uint)(lParam & 0xFFFF))
                     {
-                        case NIN_SELECT or NIN_KEYSELECT:
-                            icon.Selected?.Invoke();
+                        case (NIN_SELECT or NIN_KEYSELECT) and var selected:
+                            icon.Selected?.Invoke(icon.Bounds(anchorX, anchorY), selected == NIN_KEYSELECT);
                             break;
                         case WM_CONTEXTMENU:
                             icon.MenuRequested?.Invoke(anchorX, anchorY);

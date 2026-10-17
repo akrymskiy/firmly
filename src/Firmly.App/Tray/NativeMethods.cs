@@ -17,8 +17,7 @@ internal static unsafe partial class NativeMethods
     public const uint NIN_SELECT = WM_USER, NIN_KEYSELECT = WM_USER + 1;
     public const uint NIIF_NONE = 0, NIIF_WARNING = 2;
 
-    public const uint MF_STRING = 0x0000, MF_GRAYED = 0x0001, MF_CHECKED = 0x0008, MF_POPUP = 0x0010, MF_SEPARATOR = 0x0800;
-    public const uint MF_BYCOMMAND = 0x0000;
+    public const uint MF_STRING = 0x0000, MF_GRAYED = 0x0001, MF_SEPARATOR = 0x0800;
     public const uint TPM_RIGHTBUTTON = 0x0002, TPM_NONOTIFY = 0x0080, TPM_RETURNCMD = 0x0100;
 
     public const int SM_CXSMICON = 49;
@@ -97,14 +96,6 @@ internal static unsafe partial class NativeMethods
     public static partial bool AppendMenu(nint menu, uint flags, nuint idOrSubmenu, string? text);
 
     [LibraryImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static partial bool CheckMenuRadioItem(nint menu, uint first, uint last, uint check, uint flags);
-
-    [LibraryImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static partial bool SetMenuDefaultItem(nint menu, uint item, uint byPosition);
-
-    [LibraryImport("user32.dll")]
     public static partial int TrackPopupMenuEx(nint menu, uint flags, int x, int y, nint hwnd, nint parameters);
 
     [LibraryImport("user32.dll")]
@@ -153,4 +144,39 @@ internal static unsafe partial class NativeMethods
 
     [LibraryImport("user32.dll")]
     public static partial int GetSystemMetricsForDpi(int index, uint dpi);
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct NOTIFYICONIDENTIFIER
+    {
+        public uint cbSize;
+        public nint hWnd;
+        public uint uID;
+        public Guid guidItem;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct RECT
+    {
+        public int left, top, right, bottom;
+    }
+
+    /// <returns>An HRESULT.</returns>
+    [LibraryImport("shell32.dll")]
+    public static partial int Shell_NotifyIconGetRect(NOTIFYICONIDENTIFIER* identifier, RECT* location);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool GetWindowRect(nint hwnd, RECT* rect);
+
+    public const uint DWMWA_EXTENDED_FRAME_BOUNDS = 9;
+
+    /// <returns>An HRESULT.</returns>
+    [LibraryImport("dwmapi.dll")]
+    public static partial int DwmGetWindowAttribute(nint hwnd, uint attribute, void* value, uint size);
+
+    public const int MDT_EFFECTIVE_DPI = 0;
+
+    /// <returns>An HRESULT.</returns>
+    [LibraryImport("shcore.dll")]
+    public static partial int GetDpiForMonitor(nint monitor, int dpiType, uint* dpiX, uint* dpiY);
 }

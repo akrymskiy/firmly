@@ -114,6 +114,13 @@ public partial class App : Application
         _ = Session.RefreshQuietlyAsync();
     }
 
+    /// <summary>Brings the window back on its Settings page.</summary>
+    public static void ShowSettings()
+    {
+        ShowMainWindow();
+        ((MainWindow)Window).ShowSettings();
+    }
+
     /// <summary>Ends Firmly, tray icon and all.</summary>
     public static void ExitApp()
     {
