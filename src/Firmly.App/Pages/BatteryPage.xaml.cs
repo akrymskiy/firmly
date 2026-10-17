@@ -3,7 +3,7 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace Firmly.App.Pages;
 
-/// <summary>The battery's charge and how the firmware manages it.</summary>
+/// <summary>The battery's charge, its charge mode, and a full charge for a while.</summary>
 public sealed partial class BatteryPage : Page
 {
     public BatteryPage()
@@ -12,4 +12,11 @@ public sealed partial class BatteryPage : Page
     }
 
     public SessionViewModel Session => App.Session;
+
+    // The binding only ever selects the firmware's current mode (one-way), so another selection is the user's pick.
+    private void OnModeSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (sender is RadioButtons picker)
+            Session.Charge.RequestMode(picker.SelectedIndex);
+    }
 }

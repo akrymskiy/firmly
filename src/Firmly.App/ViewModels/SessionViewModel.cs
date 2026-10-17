@@ -9,10 +9,12 @@ namespace Firmly.App.ViewModels;
 public partial class SessionViewModel : ObservableObject
 {
     private readonly FirmlyClient _client = new();
+    private bool _supportsOverride;
 
     public SessionViewModel()
     {
         Status = "Not connected to the Firmly service yet.";
+        Charge = new ChargeViewModel(_client, Show);
     }
 
     public FirmlyClient Client => _client;
@@ -25,6 +27,8 @@ public partial class SessionViewModel : ObservableObject
 
     public BatteryViewModel Battery { get; } = new();
 
+    public ChargeViewModel Charge { get; }
+
     [RelayCommand]
     private async Task RefreshAsync()
     {
@@ -32,9 +36,11 @@ public partial class SessionViewModel : ObservableObject
         try
         {
             var status = await _client.GetStatusAsync();
+            _supportsOverride = status.Features?.Contains(IpcFeatures.ChargeOverride) == true;
             if (status.Vendor is null)
             {
                 Settings.Clear();
+                Charge.Clear();
                 Status = "This device's firmware isn't supported yet.";
                 return;
             }
@@ -47,6 +53,7 @@ public partial class SessionViewModel : ObservableObject
         catch (FirmlyServiceException ex)
         {
             Settings.Clear();
+            Charge.Clear();
             Status = ex.Message;
         }
     }
@@ -89,6 +96,7 @@ public partial class SessionViewModel : ObservableObject
     private void Show(FirmwareSnapshot snapshot)
     {
         Battery.SetReportedChargeLimit(snapshot.ReportedChargeLimit);
+        Charge.Update(snapshot, _supportsOverride);
 
         var settings = snapshot.Settings;
         var sameCards = Settings.Count == settings.Count
