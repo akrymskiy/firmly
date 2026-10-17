@@ -1,22 +1,15 @@
-using Firmly.Ipc;
+using Firmly.App.Pages;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media.Animation;
 using Windows.System;
-
-// To learn more about WinUI, the WinUI project structure,
-// and more about our project templates, see: http://aka.ms/winui-project-info.
 
 namespace Firmly.App;
 
-/// <summary>
-/// The application window. This hosts a Frame that displays pages. Add your
-/// UI and logic to MainPage.xaml / MainPage.xaml.cs instead of here so you
-/// can use Page features such as navigation events and the Loaded lifecycle.
-/// </summary>
+/// <summary>The application window: title bar, navigation pane, and a frame for the selected page.</summary>
 public sealed partial class MainWindow : Window
 {
-    private readonly FirmlyClient _client = new();
-    private bool _aboutOpen;
-
     public MainWindow()
     {
         InitializeComponent();
@@ -26,37 +19,29 @@ public sealed partial class MainWindow : Window
 
         AppWindow.SetIcon("Assets/AppIcon.ico");
 
-        // Navigate the root frame to the main page on startup.
-        RootFrame.Navigate(typeof(MainPage));
+        NavView.SelectedItem = NavView.MenuItems[0];
     }
 
-    private async void OnHelpClick(object sender, RoutedEventArgs e) =>
+    private void OnNavigationSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
+    {
+        var page = args.IsSettingsSelected
+            ? typeof(SettingsPage)
+            : (args.SelectedItem as NavigationViewItem)?.Tag switch
+            {
+                nameof(BatteryPage) => typeof(BatteryPage),
+                nameof(FirmwarePage) => typeof(FirmwarePage),
+                _ => null,
+            };
+
+        if (page is not null && RootFrame.CurrentSourcePageType != page)
+            RootFrame.Navigate(page, null, new EntranceNavigationTransitionInfo());
+    }
+
+    private void OnPaneToggleRequested(TitleBar sender, object args) => NavView.IsPaneOpen = !NavView.IsPaneOpen;
+
+    private async void OnHelpInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
         await Launcher.LaunchUriAsync(new Uri(AboutInfo.HelpUrl));
-
-    private async void OnReportProblemClick(object sender, RoutedEventArgs e) =>
-        await Launcher.LaunchUriAsync((await AboutInfo.LoadAsync(_client)).NewIssueUri);
-
-    private async void OnRestartServiceClick(object sender, RoutedEventArgs e)
-    {
-        if (RootFrame.Content is MainPage page)
-            await page.ViewModel.RestartServiceAsync();
-    }
-
-    private async void OnAboutClick(object sender, RoutedEventArgs e)
-    {
-        // Only one ContentDialog can be open at a time.
-        if (_aboutOpen)
-            return;
-
-        _aboutOpen = true;
-        try
-        {
-            var dialog = new AboutDialog(await AboutInfo.LoadAsync(_client)) { XamlRoot = Content.XamlRoot };
-            await dialog.ShowAsync();
-        }
-        finally
-        {
-            _aboutOpen = false;
-        }
     }
 }

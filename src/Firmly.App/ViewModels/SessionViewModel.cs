@@ -5,15 +5,19 @@ using Firmly.Ipc;
 
 namespace Firmly.App.ViewModels;
 
-public partial class MainPageViewModel : ObservableObject
+/// <summary>The app's connection to the Firmly service, shared by every page (<see cref="App.Session"/>).</summary>
+public partial class SessionViewModel : ObservableObject
 {
     private readonly FirmlyClient _client = new();
 
-    public MainPageViewModel()
+    public SessionViewModel()
     {
         Status = "Not connected to the Firmly service yet.";
     }
 
+    public FirmlyClient Client => _client;
+
+    /// <summary>One line on the connection, e.g. "HP firmware", or why there's no connection.</summary>
     [ObservableProperty]
     public partial string Status { get; set; }
 
@@ -48,23 +52,24 @@ public partial class MainPageViewModel : ObservableObject
     }
 
     /// <summary>Restarts the Firmly Windows service (one UAC prompt), then reconnects.</summary>
-    public async Task RestartServiceAsync()
+    /// <returns>Why it didn't work, or null when it did (or the user declined the prompt).</returns>
+    public async Task<string?> RestartServiceAsync()
     {
         Status = "Restarting the Firmly service…";
+        string? problem = null;
         switch (await ServiceControl.RestartAsync())
         {
             case ServiceRestartResult.NotInstalled:
-                Status = "The Firmly service isn't installed on this PC. Reinstall Firmly to add it.";
-                return;
+                problem = "The Firmly service isn't installed on this PC. Reinstall Firmly to add it.";
+                break;
             case ServiceRestartResult.Failed:
-                Settings.Clear();
-                Status = "The Firmly service didn't start again. Its entries in the Windows event log may say why.";
-                return;
-            default:
-                // Restarted, or the UAC prompt was declined: show where things stand.
-                await RefreshAsync();
-                return;
+                problem = "The Firmly service didn't start again. Its entries in the Windows event log may say why.";
+                break;
         }
+
+        // Show where things stand, whatever happened.
+        await RefreshAsync();
+        return problem;
     }
 
     private async Task ReloadSettingsAsync()

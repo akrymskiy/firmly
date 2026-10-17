@@ -12,64 +12,48 @@
         <MicaBackdrop />
     </Window.SystemBackdrop>
 
-    <Grid>
+    <!-- Hidden: otherwise hovering anywhere shows an "F1" tooltip for the Help shortcut. -->
+    <Grid KeyboardAcceleratorPlacementMode="Hidden">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
+        <Grid.KeyboardAccelerators>
+            <KeyboardAccelerator Key="F1" Invoked="OnHelpInvoked" />
+        </Grid.KeyboardAccelerators>
 
-        <TitleBar x:Name="AppTitleBar" Title="Firmly">
+        <TitleBar
+            x:Name="AppTitleBar"
+            Title="Firmly"
+            IsPaneToggleButtonVisible="True"
+            PaneToggleRequested="OnPaneToggleRequested">
             <TitleBar.IconSource>
                 <ImageIconSource ImageSource="Assets/AppIcon.ico" />
             </TitleBar.IconSource>
-            <TitleBar.RightHeader>
-                <Button
-                    Margin="0,0,4,0"
-                    Padding="10,6"
-                    Background="Transparent"
-                    BorderThickness="0"
-                    AutomationProperties.Name="More options"
-                    ToolTipService.ToolTip="More options">
-                    <FontIcon FontSize="16" Glyph="&#xE712;" />
-                    <Button.Flyout>
-                        <MenuFlyout Placement="BottomEdgeAlignedRight">
-                            <MenuFlyoutItem Text="Help" Click="OnHelpClick">
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xE897;" />
-                                </MenuFlyoutItem.Icon>
-                                <MenuFlyoutItem.KeyboardAccelerators>
-                                    <KeyboardAccelerator Key="F1" />
-                                </MenuFlyoutItem.KeyboardAccelerators>
-                            </MenuFlyoutItem>
-                            <MenuFlyoutItem Text="Report a problem" Click="OnReportProblemClick">
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xED15;" />
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                            <MenuFlyoutSeparator />
-                            <!-- The shield says it asks for administrator rights. -->
-                            <MenuFlyoutItem Text="Restart service" Click="OnRestartServiceClick">
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xEA18;" />
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                            <MenuFlyoutSeparator />
-                            <MenuFlyoutItem Text="About Firmly" Click="OnAboutClick">
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xE946;" />
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                        </MenuFlyout>
-                    </Button.Flyout>
-                </Button>
-            </TitleBar.RightHeader>
         </TitleBar>
 
-        <!--
-            The Frame hosts pages for your application content. Add your UI to
-            MainPage.xaml rather than here so you can use Page features such as
-            navigation events and the Loaded lifecycle.
-        -->
-        <Frame x:Name="RootFrame" Grid.Row="1" />
+        <!-- Pages are tagged with their type name under Firmly.App.Pages. -->
+        <NavigationView
+            x:Name="NavView"
+            Grid.Row="1"
+            IsBackButtonVisible="Collapsed"
+            IsPaneToggleButtonVisible="False"
+            IsSettingsVisible="True"
+            OpenPaneLength="240"
+            SelectionChanged="OnNavigationSelectionChanged">
+            <NavigationView.MenuItems>
+                <NavigationViewItem Content="Battery" Tag="BatteryPage">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE859;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Firmware" Tag="FirmwarePage">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE950;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
+            <Frame x:Name="RootFrame" />
+        </NavigationView>
     </Grid>
 </Window>

@@ -28,6 +28,9 @@ public partial class App : Application
     /// </summary>
     public static Microsoft.UI.Dispatching.DispatcherQueue DispatcherQueue { get; private set; } = null!;
 
+    /// <summary>The connection to the Firmly service, shared by every page.</summary>
+    public static ViewModels.SessionViewModel Session { get; private set; } = null!;
+
     /// <summary>
     /// The native window handle (HWND). Use for file pickers,
     /// <c>DataTransferManager</c>, and any WinRT interop that requires
@@ -50,8 +53,10 @@ public partial class App : Application
     /// <param name="args">Details about the launch request and process.</param>
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
-        Window = new MainWindow();
         DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+        Session = new ViewModels.SessionViewModel();
+        Window = new MainWindow();
         Window.Activate();
+        Session.RefreshCommand.Execute(null);
     }
 }
