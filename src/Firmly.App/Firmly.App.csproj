@@ -73,10 +73,18 @@
     </PropertyGroup>
     <!-- Emptied first: files from an earlier kind of build (e.g. trimmed rather than AOT) would be packaged too. -->
     <RemoveDir Directories="$(_FirmlyServicePublishDir)" />
-    <!-- Not OutDir: when it's set for the app (tools\install-package.ps1 does), the service would build into the app's folder. -->
-    <MSBuild Projects="..\Firmly.Service\Firmly.Service.csproj" Targets="Restore;Publish"
-             Properties="Configuration=$(Configuration);Platform=$(Platform);RuntimeIdentifier=$(RuntimeIdentifier);SelfContained=true;PublishDir=$(_FirmlyServicePublishDir)"
-             RemoveProperties="OutDir" />
+    <PropertyGroup>
+      <_FirmlyServiceProperties>Configuration=$(Configuration);Platform=$(Platform);RuntimeIdentifier=$(RuntimeIdentifier);SelfContained=true;PublishDir=$(_FirmlyServicePublishDir)</_FirmlyServiceProperties>
+    </PropertyGroup>
+    <!--
+      Restore first, in a call of its own (with a session id, as dotnet's own restore does). Publishing in the same call
+      would use the previous restore's results: on a fresh machine, none, and so neither trimming nor AOT.
+      Not OutDir: when it's set for the app (tools\install-package.ps1 does), the service would build into the app's folder.
+    -->
+    <MSBuild Projects="..\Firmly.Service\Firmly.Service.csproj" Targets="Restore"
+             Properties="$(_FirmlyServiceProperties);MSBuildRestoreSessionId=$([System.Guid]::NewGuid())" RemoveProperties="OutDir" />
+    <MSBuild Projects="..\Firmly.Service\Firmly.Service.csproj" Targets="Publish"
+             Properties="$(_FirmlyServiceProperties)" RemoveProperties="OutDir" />
     <ItemGroup>
       <!-- Without debug symbols: the AOT service's are 27 MB. -->
       <_FirmlyServiceFile Include="$(_FirmlyServicePublishDir)**" Exclude="$(_FirmlyServicePublishDir)**\*.pdb" />
@@ -98,7 +106,10 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" />
+    <!-- WinUI brings the parts it builds on (Foundation, InteractiveExperiences); Runtime makes the package depend
+         on the Windows App SDK runtime. Not the whole Microsoft.WindowsAppSDK, which adds Windows ML, AI and more. -->
+    <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Runtime" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools.WinApp" />
   </ItemGroup>
