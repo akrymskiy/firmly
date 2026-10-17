@@ -1,0 +1,105 @@
+name: Release
+
+# Pushing a tag such as v0.2.0 or v0.2.0-preview.1 builds signed x64 and ARM64 packages and publishes them as a
+# GitHub release (a prerelease when the tag has a suffix). The packages are signed with a self-signed test
+# certificate (secrets SIGNING_CERTIFICATE, a base64 .pfx, and SIGNING_CERTIFICATE_PASSWORD); Install.cmd in each
+# zip trusts it before installing.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        platform: [x64, ARM64]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      # v0.2.0-preview.1 -> version 0.2.0-preview.1 for the app, 0.2.0.<run number> for the package, which must be
+      # four numbers and grow with each release so installing one over another is an upgrade.
+      - name: Version
+        id: version
+        shell: pwsh
+        run: |
+          $version = '${{ github.ref_name }}'.TrimStart('v')
+          $core = ($version -split '[-+]')[0]
+          if ($core -notmatch '^\d+\.\d+\.\d+$') { throw "Tag ${{ github.ref_name }} isn't vMAJOR.MINOR.PATCH[-suffix]." }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "package=$core.${{ github.run_number }}" >> $env:GITHUB_OUTPUT
+
+      - name: Set the package version
+        shell: pwsh
+        run: |
+          $path = 'src/Firmly.App/Package.appxmanifest'
+          [xml] $manifest = Get-Content $path -Raw
+          $manifest.Package.Identity.Version = '${{ steps.version.outputs.package }}'
+          $manifest.Save((Resolve-Path $path))
+
+      - name: Signing certificate
+        shell: pwsh
+        env:
+          CERTIFICATE: ${{ secrets.SIGNING_CERTIFICATE }}
+        run: '[IO.File]::WriteAllBytes("$env:RUNNER_TEMP\signing.pfx", [Convert]::FromBase64String($env:CERTIFICATE))'
+
+      - name: Build the package
+        shell: pwsh
+        env:
+          CERTIFICATE_PASSWORD: ${{ secrets.SIGNING_CERTIFICATE_PASSWORD }}
+        run: >
+          dotnet build src/Firmly.App -c Release -p:Platform=${{ matrix.platform }}
+          -p:Version=${{ steps.version.outputs.version }}
+          -p:GenerateAppxPackageOnBuild=true -p:AppxBundle=Never
+          -p:AppxPackageSigningEnabled=true -p:PackageCertificateKeyFile="$env:RUNNER_TEMP\signing.pfx"
+          -p:PackageCertificatePassword="$env:CERTIFICATE_PASSWORD"
+          -p:AppxPackageDir="$env:RUNNER_TEMP\AppPackages\"
+
+      # One zip per architecture: the package, the Windows App SDK runtime it depends on, the certificate, and the
+      # installer scripts.
+      - name: Zip
+        shell: pwsh
+        run: |
+          $name = 'Firmly_${{ steps.version.outputs.version }}_${{ matrix.platform }}'
+          $built = Get-ChildItem "$env:RUNNER_TEMP\AppPackages" -Directory | Select-Object -First 1
+          $zip = New-Item "$env:RUNNER_TEMP\$name" -ItemType Directory
+          Copy-Item (Get-ChildItem $built -Filter '*.msix' | Select-Object -First 1) "$zip\$name.msix"
+          Copy-Item (Get-ChildItem $built -Filter '*.cer' | Select-Object -First 1) "$zip\Firmly.cer"
+          $runtime = Get-ChildItem "$built\Dependencies\${{ matrix.platform }}" -Filter 'Microsoft.WindowsAppRuntime*.msix' | Select-Object -First 1
+          Copy-Item $runtime "$zip\$($runtime.BaseName)_${{ matrix.platform }}.msix"
+          Copy-Item tools/release/Install.ps1, tools/release/Install.cmd $zip
+          Get-ChildItem $zip | Format-Table Name, Length
+          Compress-Archive "$zip\*" "$env:RUNNER_TEMP\$name.zip"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Firmly_${{ matrix.platform }}
+          path: ${{ runner.temp }}/Firmly_*.zip
+          if-no-files-found: error
+
+  release:
+    needs: package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          path: packages
+          merge-multiple: true
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=$([[ "${{ github.ref_name }}" == *-* ]] && echo --prerelease || true)
+          gh release create "${{ github.ref_name }}" packages/*.zip $prerelease \
+            --title "Firmly ${{ github.ref_name }}" --notes-file tools/release/notes.md --generate-notes
