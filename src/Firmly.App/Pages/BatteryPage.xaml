@@ -99,24 +99,45 @@
                     <TextBlock
                         TextWrapping="Wrap"
                         Text="Charges to 100% now, and switches back by itself when the time is up, even if Firmly isn't open. Handy before a trip." />
-                    <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
-                        <TextBlock VerticalAlignment="Center" Text="For" />
-                        <ComboBox
-                            AutomationProperties.Name="How long"
-                            ItemsSource="{x:Bind Session.Charge.Durations}"
-                            DisplayMemberPath="Label"
-                            SelectedIndex="{x:Bind Session.Charge.DurationIndex, Mode=TwoWay}" />
-                        <TextBlock VerticalAlignment="Center" Text="then" />
-                        <ComboBox
-                            AutomationProperties.Name="Then switch back to"
-                            ItemsSource="{x:Bind Session.Charge.RestoreModes}"
-                            DisplayMemberPath="Label"
-                            SelectedIndex="{x:Bind Session.Charge.RestoreIndex, Mode=TwoWay}" />
-                        <Button
-                            Content="Start"
-                            Style="{StaticResource AccentButtonStyle}"
-                            Command="{x:Bind Session.Charge.StartOverrideCommand}"
-                            IsEnabled="{x:Bind Session.Charge.CanChange, Mode=OneWay}" />
+                    <StackPanel Grid.Row="1" Spacing="8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock VerticalAlignment="Center" Text="For" />
+                            <ComboBox
+                                AutomationProperties.Name="How long"
+                                ItemsSource="{x:Bind Session.Charge.Durations}"
+                                DisplayMemberPath="Label"
+                                SelectedIndex="{x:Bind Session.Charge.DurationIndex, Mode=TwoWay}" />
+                            <CalendarDatePicker
+                                AutomationProperties.Name="Until the day"
+                                Visibility="{x:Bind Session.Charge.IsCustomDuration, Mode=OneWay}"
+                                Date="{x:Bind Session.Charge.CustomDate, Mode=TwoWay}"
+                                MinDate="{x:Bind Session.Charge.FirstCustomDate}"
+                                MaxDate="{x:Bind Session.Charge.LastCustomDate}" />
+                            <TimePicker
+                                AutomationProperties.Name="At"
+                                Visibility="{x:Bind Session.Charge.IsCustomDuration, Mode=OneWay}"
+                                Time="{x:Bind Session.Charge.CustomTime, Mode=TwoWay}"
+                                MinuteIncrement="15" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock VerticalAlignment="Center" Text="then" />
+                            <ComboBox
+                                AutomationProperties.Name="Then switch back to"
+                                ItemsSource="{x:Bind Session.Charge.RestoreModes}"
+                                DisplayMemberPath="Label"
+                                SelectedIndex="{x:Bind Session.Charge.RestoreIndex, Mode=TwoWay}" />
+                            <Button
+                                Content="Start"
+                                Style="{StaticResource AccentButtonStyle}"
+                                Command="{x:Bind Session.Charge.StartOverrideCommand}"
+                                IsEnabled="{x:Bind Session.Charge.CanChange, Mode=OneWay}" />
+                        </StackPanel>
+                        <TextBlock
+                            Text="{x:Bind Session.Charge.Note, Mode=OneWay}"
+                            Visibility="{x:Bind Session.Charge.HasNote, Mode=OneWay}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            TextWrapping="Wrap" />
                     </StackPanel>
                 </Grid>
             </StackPanel>

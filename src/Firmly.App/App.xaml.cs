@@ -45,13 +45,14 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
-        UnhandledException += (_, e) => LogCrash(e.Exception);
+        UnhandledException += (_, e) => LogError(e.Exception);
     }
 
-    /// <summary>Unhandled errors, newest last, in the package's local folder: %LocalAppData%\Packages\…\LocalState.</summary>
+    /// <summary>Errors, newest last, in the package's local folder: %LocalAppData%\Packages\…\LocalState.</summary>
     public static string ErrorLogPath => Path.Combine(Windows.Storage.ApplicationData.Current.LocalFolder.Path, "errors.log");
 
-    private static void LogCrash(Exception exception)
+    /// <summary>Notes an error in <see cref="ErrorLogPath"/>: unhandled ones, and ones Firmly carries on after.</summary>
+    public static void LogError(Exception exception)
     {
         try
         {
@@ -59,7 +60,7 @@ public partial class App : Application
         }
         catch (IOException)
         {
-            // Nothing more to do while crashing.
+            // Nothing more to do about it.
         }
     }
 
@@ -83,9 +84,13 @@ public partial class App : Application
             System.Diagnostics.Debug.WriteLine(ex);
         }
 
+        Notifications.Register();
+        Session.Charge.OverrideEnded += mode =>
+            Notifications.Show("Your timed full charge has ended", $"The battery is back on {mode}.");
+
         // Started at sign-in: stay in the notification area until asked.
-        var kind = Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs().Kind;
-        if (kind != Microsoft.Windows.AppLifecycle.ExtendedActivationKind.StartupTask || !HasTray)
+        var activation = Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs();
+        if (activation.Kind != Microsoft.Windows.AppLifecycle.ExtendedActivationKind.StartupTask || !HasTray)
         {
             Window.Activate();
             s_tray?.Update();
@@ -93,6 +98,10 @@ public partial class App : Application
 
         Session.RefreshCommand.Execute(null);
         Session.StartAutoRefresh();
+
+        // Started by clicking a notification while Firmly wasn't running.
+        if (activation.Data is Microsoft.Windows.AppNotifications.AppNotificationActivatedEventArgs notification)
+            Notifications.Handle(notification.Arguments);
     }
 
     private static Tray.TrayController? s_tray;
@@ -121,6 +130,13 @@ public partial class App : Application
         ((MainWindow)Window).ShowSettings();
     }
 
+    /// <summary>Brings the window back on its Battery page.</summary>
+    public static void ShowBattery()
+    {
+        ShowMainWindow();
+        ((MainWindow)Window).ShowBattery();
+    }
+
     /// <summary>Ends Firmly, tray icon and all.</summary>
     public static void ExitApp()
     {
@@ -134,5 +150,6 @@ public partial class App : Application
     {
         s_tray?.Dispose();
         s_tray = null;
+        Notifications.Unregister();
     }
 }

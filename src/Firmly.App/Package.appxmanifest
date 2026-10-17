@@ -5,9 +5,11 @@
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
   xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
   xmlns:desktop6="http://schemas.microsoft.com/appx/manifest/desktop/windows10/6"
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap uap5 uap10 desktop6 rescap">
+  IgnorableNamespaces="uap uap5 uap10 desktop desktop6 com rescap">
 
   <!-- Identity values must match Partner Center (Product identity) exactly. -->
   <Identity
@@ -58,6 +60,20 @@
         <uap5:Extension Category="windows.startupTask" Executable="Firmly.exe" EntryPoint="Windows.FullTrustApplication">
           <uap5:StartupTask TaskId="FirmlyStartup" Enabled="false" DisplayName="Firmly" />
         </uap5:Extension>
+        <!--
+          Clicking a Firmly notification reaches the running Firmly, or starts it, through this COM class.
+          Dev builds get another class id (DevPackage.xslt), so both can be installed.
+        -->
+        <desktop:Extension Category="windows.toastNotificationActivation">
+          <desktop:ToastNotificationActivation ToastActivatorCLSID="283D4996-92BE-4816-96AF-8F868C7E1D6F" />
+        </desktop:Extension>
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <com:ExeServer Executable="Firmly.exe" Arguments="----AppNotificationActivated:" DisplayName="Firmly notifications">
+              <com:Class Id="283D4996-92BE-4816-96AF-8F868C7E1D6F" />
+            </com:ExeServer>
+          </com:ComServer>
+        </com:Extension>
       </Extensions>
     </Application>
   </Applications>

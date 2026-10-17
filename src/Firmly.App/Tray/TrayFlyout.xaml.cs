@@ -1,13 +1,16 @@
+using System.Numerics;
 using Firmly.App.ViewModels;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Hosting;
 using Microsoft.UI.Xaml.Input;
 using Windows.ApplicationModel;
 using Windows.Foundation;
 using Windows.Graphics;
 using Windows.System;
+using Windows.UI.ViewManagement;
 using static Firmly.App.Tray.NativeMethods;
 
 namespace Firmly.App.Tray;
@@ -22,6 +25,8 @@ public sealed unsafe partial class TrayFlyout : Window
     private const double Gap = 12;
 
     private RectInt32 _anchor;
+    // The screen edge the taskbar is on: 0 top, 1 bottom, 2 left, 3 right.
+    private int _edge = 1;
     private bool _closing;
     private bool _active;
     // How to focus the first control once the window is active; Unfocused when done.
@@ -109,6 +114,7 @@ public sealed unsafe partial class TrayFlyout : Window
         Activate();
         // Again now that it's shown: the invisible border's size can only be read from a visible window.
         Place();
+        SlideIn();
         _ = Session.RefreshQuietlyAsync();
     }
 
@@ -157,7 +163,8 @@ public sealed unsafe partial class TrayFlyout : Window
         var screen = display.OuterBounds;
         var (centerX, centerY) = (_anchor.X + _anchor.Width / 2, _anchor.Y + _anchor.Height / 2);
         int[] toEdge = [centerY - screen.Y, screen.Y + screen.Height - centerY, centerX - screen.X, screen.X + screen.Width - centerX];
-        var (x, y) = Array.IndexOf(toEdge, toEdge.Min()) switch
+        _edge = Array.IndexOf(toEdge, toEdge.Min());
+        var (x, y) = _edge switch
         {
             0 => (centerX - width / 2, Math.Max(work.Y, _anchor.Y + _anchor.Height) + gap),
             2 => (Math.Max(work.X, _anchor.X + _anchor.Width) + gap, centerY - height / 2),
@@ -167,6 +174,36 @@ public sealed unsafe partial class TrayFlyout : Window
         x = Math.Max(work.X + gap, Math.Min(x, work.X + work.Width - gap - width));
         y = Math.Max(work.Y + gap, Math.Min(y, work.Y + work.Height - gap - height));
         AppWindow.Move(new PointInt32(x - (visible.left - outer.left), y - (visible.top - outer.top)));
+    }
+
+    // Slides in from the taskbar, as Windows' own flyouts do, unless animations are turned off in Windows.
+    private void SlideIn()
+    {
+        if (!new UISettings().AnimationsEnabled)
+            return;
+
+        ElementCompositionPreview.SetIsTranslationEnabled(Panel, true);
+        var visual = ElementCompositionPreview.GetElementVisual(Panel);
+        var compositor = visual.Compositor;
+        var ease = compositor.CreateCubicBezierEasingFunction(new Vector2(0.1f, 0.9f), new Vector2(0.2f, 1f));
+
+        var slide = compositor.CreateVector3KeyFrameAnimation();
+        slide.InsertKeyFrame(0, _edge switch
+        {
+            0 => new Vector3(0, -24, 0),
+            2 => new Vector3(-24, 0, 0),
+            3 => new Vector3(24, 0, 0),
+            _ => new Vector3(0, 24, 0),
+        });
+        slide.InsertKeyFrame(1, Vector3.Zero, ease);
+        slide.Duration = TimeSpan.FromMilliseconds(250);
+        visual.StartAnimation("Translation", slide);
+
+        var fade = compositor.CreateScalarKeyFrameAnimation();
+        fade.InsertKeyFrame(0, 0);
+        fade.InsertKeyFrame(1, 1, ease);
+        fade.Duration = TimeSpan.FromMilliseconds(150);
+        visual.StartAnimation("Opacity", fade);
     }
 
     public string ChargeOrNone(string charge) => charge.Length > 0 ? charge : "No battery reading";
@@ -193,8 +230,17 @@ public sealed unsafe partial class TrayFlyout : Window
             item.Click += (_, _) =>
             {
                 charge.DurationIndex = index;
+                // A date is picked on the Battery page.
+                if (charge.IsCustomDuration)
+                {
+                    Hide();
+                    App.ShowBattery();
+                    return;
+                }
                 charge.StartOverrideCommand.Execute(null);
             };
+            if (charge.Durations[i].IsCustom)
+                DurationMenu.Items.Add(new MenuFlyoutSeparator());
             DurationMenu.Items.Add(item);
         }
     }
