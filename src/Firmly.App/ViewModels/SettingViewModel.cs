@@ -9,12 +9,15 @@ namespace Firmly.App.ViewModels;
 public partial class SettingViewModel : ObservableObject
 {
     private readonly FirmlyClient _client;
+    private readonly BiosPasswordGate _passwords;
     private readonly Func<Task> _reloadAll;
 
+    /// <param name="passwords">Adds the BIOS password to the change when one is set.</param>
     /// <param name="reloadAll">Called after a successful change, since other settings can depend on this one.</param>
-    public SettingViewModel(SettingInfo info, FirmlyClient client, Func<Task> reloadAll)
+    public SettingViewModel(SettingInfo info, FirmlyClient client, BiosPasswordGate passwords, Func<Task> reloadAll)
     {
         _client = client;
+        _passwords = passwords;
         _reloadAll = reloadAll;
         Name = info.Setting.Name;
         Options = [.. info.Setting.PossibleValues];
@@ -86,9 +89,17 @@ public partial class SettingViewModel : ObservableObject
         Note = "Applying…";
         try
         {
-            var updated = await _client.SetSettingAsync(Name, value);
+            var updated = await _passwords.CallAsync(password => _client.SetSettingAsync(Name, value, password));
             IsBusy = false;
             Update(updated);
+        }
+        catch (OperationCanceledException)
+        {
+            // No password given: nothing changed.
+            IsBusy = false;
+            Note = "";
+            OnPropertyChanged(nameof(SelectedIndex));
+            return;
         }
         catch (FirmlyServiceException ex)
         {

@@ -59,6 +59,56 @@
                     IsEnabled="{x:Bind ViewModel.CanChangeStartAtSignIn, Mode=OneWay}" />
             </Grid>
 
+            <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.ShowsBiosPassword, Mode=OneWay}">
+                <TextBlock Text="BIOS password" Style="{StaticResource SectionHeaderStyle}" />
+                <Grid Style="{StaticResource CardStyle}" ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon VerticalAlignment="Center" Glyph="&#xE72E;" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="BIOS administrator password" />
+                        <TextBlock
+                            Text="This PC's BIOS has one, so Firmly asks for it before changing settings."
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            TextWrapping="Wrap" />
+                        <TextBlock
+                            Text="{x:Bind ViewModel.SavedPasswordText, Mode=OneWay}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+                    <Button
+                        Grid.Column="2"
+                        VerticalAlignment="Center"
+                        Content="Forget"
+                        AutomationProperties.Name="Forget the saved BIOS password"
+                        Visibility="{x:Bind ViewModel.HasSavedPassword, Mode=OneWay}"
+                        Command="{x:Bind ViewModel.ForgetPasswordCommand}" />
+                </Grid>
+                <Grid Style="{StaticResource CardStyle}" ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon VerticalAlignment="Top" Margin="0,4,0,0" Glyph="&#xE823;" />
+                    <StackPanel Grid.Column="1" Spacing="4">
+                        <TextBlock Text="When a timed full charge ends" />
+                        <!-- Two-way: the choice is a plain preference, kept by the view model. -->
+                        <RadioButtons
+                            AutomationProperties.Name="When a timed full charge ends"
+                            SelectedIndex="{x:Bind ViewModel.SwitchBackChoice, Mode=TwoWay}"
+                            IsEnabled="{x:Bind ViewModel.AllowSavedPassword, Mode=OneWay}">
+                            <RadioButton Content="Ask me, with Windows Hello or the password" />
+                            <RadioButton Content="Switch back by itself: Firmly's service keeps the password, encrypted, until then" />
+                        </RadioButtons>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+
             <TextBlock Text="Service" Style="{StaticResource SectionHeaderStyle}" />
             <Grid Style="{StaticResource CardStyle}" ColumnSpacing="16">
                 <Grid.ColumnDefinitions>

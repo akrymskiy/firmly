@@ -10,6 +10,7 @@ public sealed partial class SettingsPage : Page
     {
         InitializeComponent();
         Loaded += (_, _) => ViewModel.LoadCommand.Execute(null);
+        Unloaded += (_, _) => ViewModel.Detach();
     }
 
     public SettingsViewModel ViewModel { get; } = new(App.Session);

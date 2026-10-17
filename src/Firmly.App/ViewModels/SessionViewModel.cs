@@ -14,10 +14,21 @@ public partial class SessionViewModel : ObservableObject
     public SessionViewModel()
     {
         Status = "Not connected to the Firmly service yet.";
-        Charge = new ChargeViewModel(_client, Show);
+        Charge = new ChargeViewModel(_client, Show, Passwords);
     }
 
     public FirmlyClient Client => _client;
+
+    /// <summary>Adds the BIOS password to changes when one is set.</summary>
+    public BiosPasswordGate Passwords { get; } = new();
+
+    /// <summary>The BIOS has an administrator password, so changes ask for it.</summary>
+    [ObservableProperty]
+    public partial bool BiosPasswordSet { get; set; }
+
+    /// <summary>The machine policy lets Firmly keep the BIOS password.</summary>
+    [ObservableProperty]
+    public partial bool AllowSavedBiosPassword { get; set; } = true;
 
     /// <summary>One line on the connection, e.g. "HP firmware", or why there's no connection.</summary>
     [ObservableProperty]
@@ -57,6 +68,7 @@ public partial class SessionViewModel : ObservableObject
         {
             var status = await _client.GetStatusAsync();
             _supportsOverride = status.Features?.Contains(IpcFeatures.ChargeOverride) == true;
+            AllowSavedBiosPassword = Passwords.AllowSaved = status.AllowSavedBiosPassword;
             if (status.Vendor is null)
             {
                 Settings.Clear();
@@ -115,6 +127,7 @@ public partial class SessionViewModel : ObservableObject
     // recycled ComboBoxes, which blanks their selection.
     private void Show(FirmwareSnapshot snapshot)
     {
+        BiosPasswordSet = Passwords.IsSet = snapshot.BiosPasswordSet;
         Battery.SetReportedChargeLimit(snapshot.ReportedChargeLimit);
         Charge.Update(snapshot, _supportsOverride);
 
@@ -132,6 +145,6 @@ public partial class SessionViewModel : ObservableObject
 
         Settings.Clear();
         foreach (var setting in settings)
-            Settings.Add(new SettingViewModel(setting, _client, ReloadSettingsAsync));
+            Settings.Add(new SettingViewModel(setting, _client, Passwords, ReloadSettingsAsync));
     }
 }

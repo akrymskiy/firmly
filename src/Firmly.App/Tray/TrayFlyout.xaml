@@ -37,7 +37,7 @@
                     Margin="0,12,0,0"
                     IsOpen="{x:Bind Session.Charge.HasOverride, Mode=OneWay}"
                     IsClosable="False"
-                    Severity="Success"
+                    Severity="{x:Bind Session.Charge.OverrideSeverity, Mode=OneWay}"
                     Title="{x:Bind Session.Charge.OverrideTitle, Mode=OneWay}"
                     Message="{x:Bind Session.Charge.OverrideMessage, Mode=OneWay}">
                     <InfoBar.ActionButton>

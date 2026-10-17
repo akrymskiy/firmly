@@ -17,4 +17,14 @@ internal static class AppSettings
         get => Values["CloseToTray"] as bool? ?? true;
         set => Values["CloseToTray"] = value;
     }
+
+    /// <summary>
+    /// With a BIOS password, a timed full charge lets the service keep the password until it ends, to switch back by
+    /// itself. Off unless turned on: Firmly then asks when it's time.
+    /// </summary>
+    public static bool SwitchBackByItself
+    {
+        get => Values["SwitchBackByItself"] as bool? ?? false;
+        set => Values["SwitchBackByItself"] = value;
+    }
 }

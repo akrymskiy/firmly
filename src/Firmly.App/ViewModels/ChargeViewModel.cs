@@ -22,7 +22,8 @@ public sealed record OverrideDuration(string Label, TimeSpan Length, bool IsCust
 
 /// <summary>The Battery page's charge controls: the charge mode, and a full charge for a while.</summary>
 /// <param name="show">Shows a fresh snapshot everywhere, after a change.</param>
-public partial class ChargeViewModel(FirmlyClient client, Action<FirmwareSnapshot> show) : ObservableObject
+/// <param name="passwords">Adds the BIOS password to changes when one is set.</param>
+public partial class ChargeViewModel(FirmlyClient client, Action<FirmwareSnapshot> show, BiosPasswordGate passwords) : ObservableObject
 {
     private ChargeOverride? _override;
 
@@ -31,6 +32,15 @@ public partial class ChargeViewModel(FirmlyClient client, Action<FirmwareSnapsho
 
     /// <summary>A timed charge ran its course and the service switched back; carries the mode it's now on.</summary>
     public event Action<string>? OverrideEnded;
+
+    /// <summary>
+    /// A timed charge has ended, but switching back needs the BIOS password, which the service doesn't have; carries
+    /// the mode to switch back to. Raised once per timed charge.
+    /// </summary>
+    public event Action<string>? SwitchBackNeedsPassword;
+
+    // The end time of the timed charge SwitchBackNeedsPassword was raised for.
+    private DateTimeOffset? _askedForPasswordAt;
 
     public ObservableCollection<ChargeModeOption> Modes { get; } = [];
 
@@ -134,6 +144,15 @@ public partial class ChargeViewModel(FirmlyClient client, Action<FirmwareSnapsho
     [ObservableProperty]
     public partial string OverrideMessage { get; set; } = "";
 
+    /// <summary>The timed charge has ended, and switching back waits for the BIOS password.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(OverrideSeverity))]
+    public partial bool WaitingForPassword { get; set; }
+
+    public Microsoft.UI.Xaml.Controls.InfoBarSeverity OverrideSeverity => WaitingForPassword
+        ? Microsoft.UI.Xaml.Controls.InfoBarSeverity.Warning
+        : Microsoft.UI.Xaml.Controls.InfoBarSeverity.Success;
+
     /// <summary>Shows that there's no connection, so nothing to offer.</summary>
     public void Clear()
     {
@@ -190,12 +209,28 @@ public partial class ChargeViewModel(FirmlyClient client, Action<FirmwareSnapsho
 
         _override = snapshot.ChargeOverride;
         HasOverride = _override is not null;
+        WaitingForPassword = _override?.WaitingForPassword == true;
         if (_override is { } active)
         {
             var mode = options.FirstOrDefault(o => o.Id == active.ModeId)?.Label ?? active.ModeId;
             var restore = options.FirstOrDefault(o => o.Id == active.RestoreModeId)?.Label ?? active.RestoreModeId;
-            OverrideTitle = $"{mode} until {active.Until.ToLocalTime():f}";
-            OverrideMessage = $"Then Firmly switches back to {restore}.";
+            if (active.WaitingForPassword)
+            {
+                OverrideTitle = "Your timed full charge has ended";
+                OverrideMessage = $"Switching back to {restore} needs the BIOS password.";
+                if (_askedForPasswordAt != active.Until)
+                {
+                    _askedForPasswordAt = active.Until;
+                    SwitchBackNeedsPassword?.Invoke(restore);
+                }
+            }
+            else
+            {
+                OverrideTitle = $"{mode} until {active.Until.ToLocalTime():f}";
+                OverrideMessage = active.KeepsBiosPassword
+                    ? $"Then Firmly switches back to {restore}, with the BIOS password it keeps until then."
+                    : $"Then Firmly switches back to {restore}.";
+            }
         }
     }
 
@@ -203,7 +238,7 @@ public partial class ChargeViewModel(FirmlyClient client, Action<FirmwareSnapsho
     public void RequestMode(int index)
     {
         if (index >= 0 && index < Modes.Count && index != SelectedIndex && CanChange)
-            _ = RunAsync(() => client.SetChargeModeAsync(Modes[index].Id), restoreSelection: true);
+            _ = RunAsync(password => client.SetChargeModeAsync(Modes[index].Id, password), restoreSelection: true);
     }
 
     [RelayCommand]
@@ -225,22 +260,34 @@ public partial class ChargeViewModel(FirmlyClient client, Action<FirmwareSnapsho
                 return Task.CompletedTask;
             }
         }
-        return RunAsync(() => client.SetChargeOverrideAsync(full.Id, RestoreModes[RestoreIndex].Id, until));
+        var restore = RestoreModes[RestoreIndex].Id;
+        // With a password, the service may keep it to switch back by itself, if the user chose so in Settings.
+        return RunAsync(password => client.SetChargeOverrideAsync(full.Id, restore, until, password,
+            keepBiosPassword: password is not null && passwords.AllowSaved && AppSettings.SwitchBackByItself));
     }
 
     [RelayCommand]
-    private Task SwitchBackNowAsync() => RunAsync(() => client.CancelChargeOverrideAsync());
+    private Task SwitchBackNowAsync() => RunAsync(password => client.CancelChargeOverrideAsync(password));
 
-    private async Task RunAsync(Func<Task<FirmwareSnapshot>> change, bool restoreSelection = false)
+    /// <param name="change">Gets the BIOS password, or null when none is needed.</param>
+    private async Task RunAsync(Func<string?, Task<FirmwareSnapshot>> change, bool restoreSelection = false)
     {
         IsBusy = true;
         Note = "Applying…";
         try
         {
-            var snapshot = await change();
+            var snapshot = await passwords.CallAsync(change);
             IsBusy = false;
             Note = "";
             show(snapshot);
+        }
+        catch (OperationCanceledException)
+        {
+            // No password given: nothing changed.
+            IsBusy = false;
+            Note = "";
+            if (restoreSelection)
+                OnPropertyChanged(nameof(SelectedIndex));
         }
         catch (FirmlyServiceException ex)
         {

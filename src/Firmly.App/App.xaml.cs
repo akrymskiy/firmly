@@ -84,9 +84,15 @@ public partial class App : Application
             System.Diagnostics.Debug.WriteLine(ex);
         }
 
+        Session.Passwords.Source = new BiosPasswordSource(Session.Passwords);
+
         Notifications.Register();
         Session.Charge.OverrideEnded += mode =>
             Notifications.Show("Your timed full charge has ended", $"The battery is back on {mode}.");
+        Session.Charge.SwitchBackNeedsPassword += mode =>
+            Notifications.Show("Your timed full charge has ended",
+                $"Firmly needs the BIOS password to switch the battery back to {mode}.",
+                "Switch back now", Notifications.SwitchBackAction);
 
         // Started at sign-in: stay in the notification area until asked.
         var activation = Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs();
@@ -121,6 +127,22 @@ public partial class App : Application
         Window.Activate();
         s_tray?.Update();
         _ = Session.RefreshQuietlyAsync();
+    }
+
+    /// <summary>The main window's XamlRoot, once its content has loaded; dialogs need it.</summary>
+    public static async Task<XamlRoot> GetXamlRootAsync()
+    {
+        var content = (FrameworkElement)Window.Content;
+        if (!content.IsLoaded)
+        {
+            var loaded = new TaskCompletionSource();
+            void OnLoaded(object sender, RoutedEventArgs e) => loaded.TrySetResult();
+            content.Loaded += OnLoaded;
+            if (!content.IsLoaded)
+                await loaded.Task;
+            content.Loaded -= OnLoaded;
+        }
+        return content.XamlRoot;
     }
 
     /// <summary>Brings the window back on its Settings page.</summary>
