@@ -55,7 +55,8 @@
   <!--
     FirmlyPackageService=true puts Firmly.Service in the package as a LocalSystem service. Installing such a package
     needs administrator rights, so it defaults to on only when building an .msix (GenerateAppxPackageOnBuild).
-    Other builds, including dotnet run, register the app without the service; run tools\start-service.cmd for it.
+    Other builds, including dotnet run, register the app alone as "Firmly Dev" (AlexKrymskiy.Firmly.Dev), next to any
+    installed Firmly; it uses whichever service is running. See DevPackage.xslt.
   -->
   <PropertyGroup>
     <FirmlyPackageService Condition="'$(FirmlyPackageService)' == '' and '$(GenerateAppxPackageOnBuild)' == 'true'">true</FirmlyPackageService>
@@ -76,10 +77,10 @@
     </ItemGroup>
   </Target>
 
-  <Target Name="FirmlyStripPackagedService" BeforeTargets="_ValidatePresenceOfAppxManifestItems" Condition="'$(FirmlyPackageService)' != 'true'"
-          Inputs="@(AppxManifest);StripPackagedService.xslt" Outputs="$(IntermediateOutputPath)Package.appxmanifest">
+  <Target Name="FirmlyMakeDevManifest" BeforeTargets="_ValidatePresenceOfAppxManifestItems" Condition="'$(FirmlyPackageService)' != 'true'"
+          Inputs="@(AppxManifest);DevPackage.xslt" Outputs="$(IntermediateOutputPath)Package.appxmanifest">
     <!-- Target paths are evaluated here, after the SDK has set IntermediateOutputPath. -->
-    <XslTransformation XmlInputPaths="@(AppxManifest)" XslInputPath="StripPackagedService.xslt" OutputPaths="$(IntermediateOutputPath)Package.appxmanifest" />
+    <XslTransformation XmlInputPaths="@(AppxManifest)" XslInputPath="DevPackage.xslt" OutputPaths="$(IntermediateOutputPath)Package.appxmanifest" />
     <ItemGroup>
       <AppxManifest Remove="@(AppxManifest)" />
       <AppxManifest Include="$(IntermediateOutputPath)Package.appxmanifest" />

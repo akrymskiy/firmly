@@ -59,9 +59,9 @@ Or run `tools\start-service.cmd [Debug|Release]` from any terminal: it builds th
 
 ### Packaging
 
-The MSIX installs `Firmly.Service` as an automatic LocalSystem Windows service. Installing a package with a service needs administrator rights, so only `.msix` builds (`-p:GenerateAppxPackageOnBuild=true`) include it; other builds, including `dotnet run`, register the app alone. `-p:FirmlyPackageService=true|false` overrides that.
+The MSIX installs `Firmly.Service` as an automatic LocalSystem Windows service. Installing a package with a service needs administrator rights, so only `.msix` builds (`-p:GenerateAppxPackageOnBuild=true`) include it; other builds, including `dotnet run`, register the app alone as *Firmly Dev*, which can sit next to an installed Firmly and talks to whichever service is running. `-p:FirmlyPackageService=true|false` overrides that.
 
-To try the packaged service, run `tools\install-package.ps1` from PowerShell 7 (`pwsh`; Developer Mode required). It builds the app with the service, asks for elevation and registers it like an install. While the package is installed, `dotnet run` and `tools\start-service.cmd` won't work; `tools\install-package.ps1 -Uninstall` removes it.
+To try the packaged service, run `tools\install-package.ps1` from PowerShell 7 (`pwsh`; Developer Mode required). It builds the app with the service, asks for elevation and registers it like an install. `tools\start-service.cmd` stops that service while the dev one runs, and `tools\install-package.ps1 -Uninstall` removes the package.
 
 ## Disclaimer
 

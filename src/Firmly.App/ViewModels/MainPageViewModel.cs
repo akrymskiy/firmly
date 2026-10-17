@@ -47,6 +47,26 @@ public partial class MainPageViewModel : ObservableObject
         }
     }
 
+    /// <summary>Restarts the Firmly Windows service (one UAC prompt), then reconnects.</summary>
+    public async Task RestartServiceAsync()
+    {
+        Status = "Restarting the Firmly service…";
+        switch (await ServiceControl.RestartAsync())
+        {
+            case ServiceRestartResult.NotInstalled:
+                Status = "The Firmly service isn't installed on this PC. Reinstall Firmly to add it.";
+                return;
+            case ServiceRestartResult.Failed:
+                Settings.Clear();
+                Status = "The Firmly service didn't start again. Its entries in the Windows event log may say why.";
+                return;
+            default:
+                // Restarted, or the UAC prompt was declined: show where things stand.
+                await RefreshAsync();
+                return;
+        }
+    }
+
     private async Task ReloadSettingsAsync()
     {
         try

@@ -5,8 +5,8 @@ for trying the real LocalSystem service. Needs Developer Mode; asks for administ
   tools\install-package.ps1 [-Configuration Debug|Release] [-Platform x64|ARM64]
   tools\install-package.ps1 -Uninstall
 
-While this is installed, dotnet run can't register the app (removing a package with a service needs administrator
-rights), and tools\start-service.cmd can't start a second service. Run with -Uninstall to go back to those.
+Dev builds (dotnet run) register as "Firmly Dev" and can run next to it; tools\start-service.cmd stops this
+service while the dev one runs.
 #>
 param(
     [ValidateSet('Debug', 'Release')] [string] $Configuration = 'Release',
@@ -42,14 +42,13 @@ if (-not $Elevated) {
 }
 
 try {
-    # Also removes the registration dotnet run made, which has the same identity.
     $existing = Get-AppxPackage $packageName
     if ($existing) {
         Write-Host "Removing $($existing.PackageFullName) (installed from $($existing.InstallLocation))"
         Remove-AppxPackage $existing.PackageFullName
     }
     if ($Uninstall) {
-        Write-Host 'Firmly is uninstalled; dotnet run and tools\start-service.cmd work again.'
+        Write-Host 'Firmly is uninstalled.'
         return
     }
 
