@@ -11,9 +11,20 @@ public sealed class FirmlyClient
     // Generous: a firmware write plus read-back can take several seconds.
     private static readonly TimeSpan CallTimeout = TimeSpan.FromSeconds(30);
 
-    /// <exception cref="FirmlyServiceException">The service is unavailable or returned an error.</exception>
-    public async Task<ServiceStatus> GetStatusAsync(CancellationToken ct = default) =>
-        (await SendAsync(new IpcRequest(IpcCommand.GetStatus), ct)).Status ?? throw MissingResult();
+    /// <exception cref="FirmlyServiceException">
+    /// The service is unavailable, returned an error, or speaks a different protocol (<see cref="IpcError.IncompatibleService"/>).
+    /// </exception>
+    public async Task<ServiceStatus> GetStatusAsync(CancellationToken ct = default)
+    {
+        var status = (await SendAsync(new IpcRequest(IpcCommand.GetStatus), ct)).Status ?? throw MissingResult();
+        if (status.ProtocolVersion != IpcConstants.ProtocolVersion)
+        {
+            var version = status.ServiceVersion is { } v ? $" ({v})" : "";
+            throw new FirmlyServiceException(IpcError.IncompatibleService,
+                $"The Firmly service{version} doesn't match this version of the app. Restart the service, or reinstall Firmly.");
+        }
+        return status;
+    }
 
     /// <exception cref="FirmlyServiceException">The service is unavailable or returned an error.</exception>
     public async Task<FirmwareSnapshot> GetSettingsAsync(CancellationToken ct = default)

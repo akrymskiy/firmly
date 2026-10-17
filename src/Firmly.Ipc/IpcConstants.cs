@@ -7,4 +7,17 @@ namespace Firmly.Ipc;
 public static class IpcConstants
 {
     public const string PipeName = "Firmly.Service";
+
+    /// <summary>
+    /// Bumped only for changes an older app or service would misread. Adding a command, or a field that may be
+    /// missing, needs a new <see cref="IpcFeatures"/> entry instead.
+    /// </summary>
+    public const int ProtocolVersion = 1;
+}
+
+/// <summary>Names a service lists in <see cref="ServiceStatus.Features"/>.</summary>
+public static class IpcFeatures
+{
+    /// <summary>Reading and changing firmware settings: <see cref="IpcCommand.GetSettings"/> and <see cref="IpcCommand.SetSetting"/>.</summary>
+    public const string Firmware = "firmware";
 }

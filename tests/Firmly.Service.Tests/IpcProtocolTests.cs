@@ -36,6 +36,20 @@ public class IpcProtocolTests
         Assert.Equal(setting.PossibleValues, result.Setting.PossibleValues);
     }
 
+    [Fact]
+    public async Task Status_FromServiceBeforeProtocolVersions_ReadsAsVersionZero()
+    {
+        var body = Encoding.UTF8.GetBytes("{\"status\":{\"vendor\":\"HP\",\"isAdministrator\":false,\"requireAdminForAllChanges\":false}}");
+        var stream = new MemoryStream();
+        stream.Write(BitConverter.GetBytes(body.Length));
+        stream.Write(body);
+        stream.Position = 0;
+
+        var status = (await IpcProtocol.ReadResponseAsync(stream, Ct)).Status!;
+
+        Assert.Equal((0, null, null), (status.ProtocolVersion, status.ServiceVersion, status.Features));
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]

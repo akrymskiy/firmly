@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Reflection;
 
 using Firmly.Core;
 using Firmly.Ipc;
@@ -23,6 +24,12 @@ internal sealed class RequestHandler(
 
     // Longer names or values than any firmware uses are refused, so they can't bloat the log either.
     private const int MaxTextLength = 256;
+
+    // e.g. "0.1.0+27ce7e2...": the version plus the commit it was built from.
+    private static readonly string ServiceVersion =
+        typeof(RequestHandler).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
+
+    private static readonly string[] Features = [IpcFeatures.Firmware];
 
     // One firmware operation at a time, so a read can't interleave with another client's write and its read-back.
     private readonly SemaphoreSlim _firmwareLock = new(1, 1);
@@ -65,7 +72,8 @@ internal sealed class RequestHandler(
         var provider = _provider.Value;
 
         if (request.Command == IpcCommand.GetStatus)
-            return new IpcResponse(Status: new ServiceStatus(provider?.Vendor, caller.IsAdministrator, lockdown));
+            return new IpcResponse(Status: new ServiceStatus(
+                provider?.Vendor, caller.IsAdministrator, lockdown, ServiceVersion, IpcConstants.ProtocolVersion, Features));
 
         if (provider is null)
             return IpcResponse.Fail(IpcError.Unsupported, "This machine has no supported firmware interface.");

@@ -36,12 +36,23 @@ public enum IpcError
     ServiceError,
     /// <summary>Client side only: the service is not running or did not answer.</summary>
     ServiceUnavailable,
+    /// <summary>Client side only: the service speaks a different <see cref="IpcConstants.ProtocolVersion"/>.</summary>
+    IncompatibleService,
 }
 
 /// <param name="Vendor">Null when this machine has no supported firmware interface.</param>
 /// <param name="IsAdministrator">Whether the service treats the caller as an administrator.</param>
 /// <param name="RequireAdminForAllChanges">Machine policy restricting every change to administrators.</param>
-public sealed record ServiceStatus(string? Vendor, bool IsAdministrator, bool RequireAdminForAllChanges);
+/// <param name="ServiceVersion">The service's build, e.g. "0.1.0+27ce7e2"; null from services that predate it.</param>
+/// <param name="ProtocolVersion">The service's <see cref="IpcConstants.ProtocolVersion"/>; 0 from services that predate it.</param>
+/// <param name="Features">What the service can do, from <see cref="IpcFeatures"/>. The app shows only what is listed.</param>
+public sealed record ServiceStatus(
+    string? Vendor,
+    bool IsAdministrator,
+    bool RequireAdminForAllChanges,
+    string? ServiceVersion = null,
+    int ProtocolVersion = 0,
+    IReadOnlyList<string>? Features = null);
 
 /// <param name="Access">What the caller may do with this setting.</param>
 public sealed record SettingInfo(FirmwareSetting Setting, FirmwareChangeAccess Access);

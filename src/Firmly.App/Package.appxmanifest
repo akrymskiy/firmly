@@ -4,8 +4,9 @@
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
+  xmlns:desktop6="http://schemas.microsoft.com/appx/manifest/desktop/windows10/6"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap uap10 rescap">
+  IgnorableNamespaces="uap uap10 desktop6 rescap">
 
   <!-- Identity values must match Partner Center (Product identity) exactly. -->
   <Identity
@@ -44,10 +45,21 @@
         <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
         <uap:SplashScreen Image="Assets\SplashScreen.png" />
       </uap:VisualElements>
+      <!--
+        Installing a package with a service needs administrator rights, so ordinary builds (and dotnet run) leave
+        this extension and its capabilities out; see FirmlyPackageService in Firmly.App.csproj.
+      -->
+      <Extensions>
+        <desktop6:Extension Category="windows.service" Executable="Firmly.Service\Firmly.Service.exe" EntryPoint="Windows.FullTrustApplication">
+          <desktop6:Service Name="Firmly" StartupType="auto" StartAccount="localSystem" />
+        </desktop6:Extension>
+      </Extensions>
     </Application>
   </Applications>
 
   <Capabilities>
     <rescap:Capability Name="runFullTrust" />
+    <rescap:Capability Name="packagedServices" />
+    <rescap:Capability Name="localSystemServices" />
   </Capabilities>
 </Package>

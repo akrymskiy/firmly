@@ -36,9 +36,19 @@ public class RequestHandlerTests
     {
         _lockdown = true;
 
-        var response = await CreateHandler().HandleAsync(new(IpcCommand.GetStatus), Admin, "test", Ct);
+        var status = (await CreateHandler().HandleAsync(new(IpcCommand.GetStatus), Admin, "test", Ct)).Status!;
 
-        Assert.Equal(new ServiceStatus("Fake", IsAdministrator: true, RequireAdminForAllChanges: true), response.Status);
+        Assert.Equal(("Fake", true, true), (status.Vendor, status.IsAdministrator, status.RequireAdminForAllChanges));
+    }
+
+    [Fact]
+    public async Task GetStatus_ReportsVersionsAndFeatures()
+    {
+        var status = (await CreateHandler().HandleAsync(new(IpcCommand.GetStatus), User, "test", Ct)).Status!;
+
+        Assert.Equal(IpcConstants.ProtocolVersion, status.ProtocolVersion);
+        Assert.Matches(@"^\d+\.\d+\.\d+", status.ServiceVersion);
+        Assert.Equal([IpcFeatures.Firmware], status.Features!);
     }
 
     [Fact]

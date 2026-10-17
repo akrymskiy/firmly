@@ -57,6 +57,12 @@ dotnet run --project src/Firmly.Service
 
 Or run `tools\start-service.cmd [Debug|Release]` from any terminal: it builds the service, then asks for elevation and runs it in a new console window.
 
+### Packaging
+
+The MSIX installs `Firmly.Service` as an automatic LocalSystem Windows service. Installing a package with a service needs administrator rights, so only `.msix` builds (`-p:GenerateAppxPackageOnBuild=true`) include it; other builds, including `dotnet run`, register the app alone. `-p:FirmlyPackageService=true|false` overrides that.
+
+To try the packaged service, run `tools\install-package.ps1` (Developer Mode required). It builds the app with the service, asks for elevation and registers it like an install. While the package is installed, `dotnet run` and `tools\start-service.cmd` won't work; `tools\install-package.ps1 -Uninstall` removes it.
+
 ## Disclaimer
 
 Firmly is an independent project and is not affiliated with, endorsed by, or sponsored by HP Inc. or any other hardware vendor. All product names and trademarks are the property of their respective owners. Changing firmware settings is at your own risk.

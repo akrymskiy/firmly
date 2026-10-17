@@ -52,6 +52,40 @@
     <ProjectReference Include="..\Firmly.Ipc\Firmly.Ipc.csproj" />
   </ItemGroup>
 
+  <!--
+    FirmlyPackageService=true puts Firmly.Service in the package as a LocalSystem service. Installing such a package
+    needs administrator rights, so it defaults to on only when building an .msix (GenerateAppxPackageOnBuild).
+    Other builds, including dotnet run, register the app without the service; run tools\start-service.cmd for it.
+  -->
+  <PropertyGroup>
+    <FirmlyPackageService Condition="'$(FirmlyPackageService)' == '' and '$(GenerateAppxPackageOnBuild)' == 'true'">true</FirmlyPackageService>
+  </PropertyGroup>
+
+  <!-- Self-contained, since a packaged service can't rely on an installed .NET runtime. -->
+  <Target Name="FirmlyPublishService" BeforeTargets="AssignTargetPaths" Condition="'$(FirmlyPackageService)' == 'true'">
+    <PropertyGroup>
+      <_FirmlyServicePublishDir>$(MSBuildProjectDirectory)\$(IntermediateOutputPath)FirmlyService\</_FirmlyServicePublishDir>
+    </PropertyGroup>
+    <MSBuild Projects="..\Firmly.Service\Firmly.Service.csproj" Targets="Restore;Publish"
+             Properties="Configuration=$(Configuration);Platform=$(Platform);RuntimeIdentifier=$(RuntimeIdentifier);SelfContained=true;PublishDir=$(_FirmlyServicePublishDir)" />
+    <ItemGroup>
+      <_FirmlyServiceFile Include="$(_FirmlyServicePublishDir)**" />
+      <Content Include="@(_FirmlyServiceFile)"
+               Link="Firmly.Service\%(_FirmlyServiceFile.RecursiveDir)%(_FirmlyServiceFile.Filename)%(_FirmlyServiceFile.Extension)"
+               CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="FirmlyStripPackagedService" BeforeTargets="_ValidatePresenceOfAppxManifestItems" Condition="'$(FirmlyPackageService)' != 'true'"
+          Inputs="@(AppxManifest);StripPackagedService.xslt" Outputs="$(IntermediateOutputPath)Package.appxmanifest">
+    <!-- Target paths are evaluated here, after the SDK has set IntermediateOutputPath. -->
+    <XslTransformation XmlInputPaths="@(AppxManifest)" XslInputPath="StripPackagedService.xslt" OutputPaths="$(IntermediateOutputPath)Package.appxmanifest" />
+    <ItemGroup>
+      <AppxManifest Remove="@(AppxManifest)" />
+      <AppxManifest Include="$(IntermediateOutputPath)Package.appxmanifest" />
+    </ItemGroup>
+  </Target>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
     <PackageReference Include="Microsoft.WindowsAppSDK" />
