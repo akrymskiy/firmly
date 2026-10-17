@@ -8,6 +8,57 @@
         <StackPanel Padding="32,16,32,24" Spacing="4">
             <TextBlock Margin="0,0,0,12" Text="Settings" Style="{StaticResource TitleTextBlockStyle}" />
 
+            <TextBlock Text="General" Style="{StaticResource SectionHeaderStyle}" />
+            <Grid Style="{StaticResource CardStyle}" ColumnSpacing="16" Visibility="{x:Bind ViewModel.HasTray}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <FontIcon VerticalAlignment="Center" Glyph="&#xE8A7;" />
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="Keep running when the window is closed" />
+                    <TextBlock
+                        Text="Firmly stays in the notification area, next to the clock. To quit, right-click its icon and choose Exit."
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        TextWrapping="Wrap" />
+                </StackPanel>
+                <ToggleSwitch
+                    Grid.Column="2"
+                    MinWidth="0"
+                    AutomationProperties.Name="Keep running when the window is closed"
+                    IsOn="{x:Bind ViewModel.CloseToTray, Mode=TwoWay}" />
+            </Grid>
+            <Grid Style="{StaticResource CardStyle}" ColumnSpacing="16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <FontIcon VerticalAlignment="Center" Glyph="&#xE7E8;" />
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="Start when you sign in" />
+                    <TextBlock
+                        Text="Firmly starts in the notification area, without opening its window."
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        TextWrapping="Wrap" />
+                    <TextBlock
+                        Text="{x:Bind ViewModel.StartupNote, Mode=OneWay}"
+                        Visibility="{x:Bind ViewModel.HasStartupNote, Mode=OneWay}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                        TextWrapping="Wrap" />
+                </StackPanel>
+                <ToggleSwitch
+                    Grid.Column="2"
+                    MinWidth="0"
+                    AutomationProperties.Name="Start when you sign in"
+                    IsOn="{x:Bind ViewModel.StartAtSignIn, Mode=TwoWay}"
+                    IsEnabled="{x:Bind ViewModel.CanChangeStartAtSignIn, Mode=OneWay}" />
+            </Grid>
+
             <TextBlock Text="Service" Style="{StaticResource SectionHeaderStyle}" />
             <Grid Style="{StaticResource CardStyle}" ColumnSpacing="16">
                 <Grid.ColumnDefinitions>

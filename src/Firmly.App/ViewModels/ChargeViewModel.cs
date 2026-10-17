@@ -25,6 +25,9 @@ public partial class ChargeViewModel(FirmlyClient client, Action<FirmwareSnapsho
 {
     private ChargeOverride? _override;
 
+    /// <summary>A change was refused or failed; carries the reason. Also shown in <see cref="Note"/>.</summary>
+    public event Action<string>? ChangeFailed;
+
     public ObservableCollection<ChargeModeOption> Modes { get; } = [];
 
     /// <summary>Index of the firmware's current mode in <see cref="Modes"/>; -1 when it matches none.</summary>
@@ -196,6 +199,7 @@ public partial class ChargeViewModel(FirmlyClient client, Action<FirmwareSnapsho
         {
             IsBusy = false;
             Note = ex.Message;
+            ChangeFailed?.Invoke(ex.Message);
             // Move the radio buttons back to what the firmware actually holds.
             if (restoreSelection)
                 OnPropertyChanged(nameof(SelectedIndex));

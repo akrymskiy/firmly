@@ -7,6 +7,7 @@
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
   xmlns:f="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
   xmlns:desktop6="http://schemas.microsoft.com/appx/manifest/desktop/windows10/6"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
 
@@ -24,7 +25,7 @@
     <xsl:value-of select="concat(., ' Dev')" />
   </xsl:template>
 
-  <xsl:template match="uap:VisualElements/@DisplayName">
+  <xsl:template match="uap:VisualElements/@DisplayName | uap5:StartupTask/@DisplayName">
     <xsl:attribute name="DisplayName"><xsl:value-of select="concat(., ' Dev')" /></xsl:attribute>
   </xsl:template>
 

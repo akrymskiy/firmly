@@ -45,6 +45,22 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
+        UnhandledException += (_, e) => LogCrash(e.Exception);
+    }
+
+    /// <summary>Unhandled errors, newest last, in the package's local folder: %LocalAppData%\Packages\…\LocalState.</summary>
+    public static string ErrorLogPath => Path.Combine(Windows.Storage.ApplicationData.Current.LocalFolder.Path, "errors.log");
+
+    private static void LogCrash(Exception exception)
+    {
+        try
+        {
+            File.AppendAllText(ErrorLogPath, $"{DateTimeOffset.Now:O} {AboutInfo.AppVersion}{Environment.NewLine}{exception}{Environment.NewLine}{Environment.NewLine}");
+        }
+        catch (IOException)
+        {
+            // Nothing more to do while crashing.
+        }
     }
 
     /// <summary>
@@ -56,7 +72,56 @@ public partial class App : Application
         DispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
         Session = new ViewModels.SessionViewModel();
         Window = new MainWindow();
-        Window.Activate();
+
+        try
+        {
+            s_tray = new Tray.TrayController(Session);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Without a tray icon, Firmly is an ordinary window that closes for good.
+            System.Diagnostics.Debug.WriteLine(ex);
+        }
+
+        // Started at sign-in: stay in the notification area until asked.
+        var kind = Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs().Kind;
+        if (kind != Microsoft.Windows.AppLifecycle.ExtendedActivationKind.StartupTask || !HasTray)
+            Window.Activate();
+
         Session.RefreshCommand.Execute(null);
+        Session.StartAutoRefresh();
+    }
+
+    private static Tray.TrayController? s_tray;
+
+    /// <summary>Whether Firmly has an icon in the notification area to keep running from.</summary>
+    public static bool HasTray => s_tray is not null;
+
+    /// <summary>Set once the user chose to exit, so closing the window really ends Firmly.</summary>
+    public static bool IsExiting { get; private set; }
+
+    public static bool IsMainWindowVisible => Window.AppWindow.IsVisible;
+
+    /// <summary>Brings the window back, e.g. from the tray or when Firmly is launched again.</summary>
+    public static void ShowMainWindow()
+    {
+        Window.AppWindow.Show();
+        Window.Activate();
+        _ = Session.RefreshQuietlyAsync();
+    }
+
+    /// <summary>Ends Firmly, tray icon and all.</summary>
+    public static void ExitApp()
+    {
+        IsExiting = true;
+        Window.Close();
+        Current.Exit();
+    }
+
+    /// <summary>Removes the tray icon once the window is gone; a dead process would leave it behind until hovered.</summary>
+    public static void OnMainWindowClosed()
+    {
+        s_tray?.Dispose();
+        s_tray = null;
     }
 }

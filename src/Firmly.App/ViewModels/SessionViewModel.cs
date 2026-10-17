@@ -29,10 +29,30 @@ public partial class SessionViewModel : ObservableObject
 
     public ChargeViewModel Charge { get; }
 
+    // Read again every so often, so the tray stays current while the window is closed.
+    private static readonly TimeSpan AutoRefreshInterval = TimeSpan.FromMinutes(2);
+
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _autoRefresh;
+
     [RelayCommand]
-    private async Task RefreshAsync()
+    private Task RefreshAsync() => LoadAsync(quiet: false);
+
+    /// <summary>Reads everything again without showing "Connecting…" meanwhile.</summary>
+    public Task RefreshQuietlyAsync() => LoadAsync(quiet: true);
+
+    /// <summary>Refreshes quietly every couple of minutes from now on. Call on the UI thread.</summary>
+    public void StartAutoRefresh()
     {
-        Status = "Connecting to the Firmly service…";
+        _autoRefresh ??= Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread().CreateTimer();
+        _autoRefresh.Interval = AutoRefreshInterval;
+        _autoRefresh.Tick += (_, _) => _ = RefreshQuietlyAsync();
+        _autoRefresh.Start();
+    }
+
+    private async Task LoadAsync(bool quiet)
+    {
+        if (!quiet)
+            Status = "Connecting to the Firmly service…";
         try
         {
             var status = await _client.GetStatusAsync();

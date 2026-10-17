@@ -3,10 +3,11 @@
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
   xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
   xmlns:desktop6="http://schemas.microsoft.com/appx/manifest/desktop/windows10/6"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap uap10 desktop6 rescap">
+  IgnorableNamespaces="uap uap5 uap10 desktop6 rescap">
 
   <!-- Identity values must match Partner Center (Product identity) exactly. -->
   <Identity
@@ -53,6 +54,10 @@
         <desktop6:Extension Category="windows.service" Executable="Firmly.Service\Firmly.Service.exe" EntryPoint="Windows.FullTrustApplication">
           <desktop6:Service Name="Firmly" StartupType="auto" StartAccount="localSystem" />
         </desktop6:Extension>
+        <!-- "Start when you sign in" in Settings; Firmly then starts in the notification area. -->
+        <uap5:Extension Category="windows.startupTask" Executable="Firmly.exe" EntryPoint="Windows.FullTrustApplication">
+          <uap5:StartupTask TaskId="FirmlyStartup" Enabled="false" DisplayName="Firmly" />
+        </uap5:Extension>
       </Extensions>
     </Application>
   </Applications>

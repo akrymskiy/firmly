@@ -1,12 +1,44 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Windows.ApplicationModel;
 using Windows.ApplicationModel.DataTransfer;
 
 namespace Firmly.App.ViewModels;
 
-/// <summary>The Settings page: the service, and About.</summary>
+/// <summary>The Settings page: Firmly's own preferences, the service, and About.</summary>
 public partial class SettingsViewModel(SessionViewModel session) : ObservableObject
 {
+    // Set while showing the startup task's state, so that doesn't count as the user flipping the switch.
+    private bool _showingStartup;
+
+    /// <summary>Whether there's a notification area icon to close to.</summary>
+    public bool HasTray => App.HasTray;
+
+    [ObservableProperty]
+    public partial bool CloseToTray { get; set; } = AppSettings.CloseToTray;
+
+    partial void OnCloseToTrayChanged(bool value) => AppSettings.CloseToTray = value;
+
+    [ObservableProperty]
+    public partial bool StartAtSignIn { get; set; }
+
+    partial void OnStartAtSignInChanged(bool value)
+    {
+        if (!_showingStartup)
+            _ = ApplyStartAtSignInAsync(value);
+    }
+
+    /// <summary>False when Task Manager or a policy decides, not Firmly.</summary>
+    [ObservableProperty]
+    public partial bool CanChangeStartAtSignIn { get; set; } = true;
+
+    /// <summary>Who turned starting at sign-in on or off, when it wasn't Firmly; empty otherwise.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasStartupNote))]
+    public partial string StartupNote { get; set; } = "";
+
+    public bool HasStartupNote => StartupNote.Length > 0;
+
     public string AppVersion => $"Version {AboutInfo.AppVersion}";
 
     public string Legal => $"{AboutInfo.Copyright}. Firmly is not affiliated with HP Inc. or any other hardware vendor. "
@@ -37,7 +69,42 @@ public partial class SettingsViewModel(SessionViewModel session) : ObservableObj
     public partial string CopyLabel { get; set; } = "Copy details";
 
     [RelayCommand]
-    private async Task LoadAsync() => Info = await AboutInfo.LoadAsync(session.Client);
+    private async Task LoadAsync()
+    {
+        // Out of the page's Loaded event first: StartupTask makes a cross-process call that pumps messages, and
+        // XAML re-entered from inside Loaded ends the process (0xc000027b in Microsoft.UI.Xaml.dll).
+        await Task.Yield();
+        ShowStartAtSignIn((await StartupTask.GetAsync(AppSettings.StartupTaskId)).State);
+        Info = await AboutInfo.LoadAsync(session.Client);
+    }
+
+    private async Task ApplyStartAtSignInAsync(bool on)
+    {
+        var task = await StartupTask.GetAsync(AppSettings.StartupTaskId);
+        if (on)
+        {
+            ShowStartAtSignIn(await task.RequestEnableAsync());
+            return;
+        }
+
+        task.Disable();
+        ShowStartAtSignIn(task.State);
+    }
+
+    private void ShowStartAtSignIn(StartupTaskState state)
+    {
+        _showingStartup = true;
+        StartAtSignIn = state is StartupTaskState.Enabled or StartupTaskState.EnabledByPolicy;
+        _showingStartup = false;
+        CanChangeStartAtSignIn = state is StartupTaskState.Enabled or StartupTaskState.Disabled;
+        StartupNote = state switch
+        {
+            StartupTaskState.DisabledByUser => "Turned off in Task Manager under Startup apps. Turn it on there.",
+            StartupTaskState.DisabledByPolicy => "Turned off by your organization.",
+            StartupTaskState.EnabledByPolicy => "Turned on by your organization.",
+            _ => "",
+        };
+    }
 
     [RelayCommand]
     private async Task RestartServiceAsync()

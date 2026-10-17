@@ -19,6 +19,17 @@ public sealed partial class MainWindow : Window
 
         AppWindow.SetIcon("Assets/AppIcon.ico");
 
+        // Closing keeps Firmly running in the notification area, unless turned off in Settings or exiting.
+        AppWindow.Closing += (sender, args) =>
+        {
+            if (!App.IsExiting && App.HasTray && AppSettings.CloseToTray)
+            {
+                args.Cancel = true;
+                sender.Hide();
+            }
+        };
+        Closed += (_, _) => App.OnMainWindowClosed();
+
         NavView.SelectedItem = NavView.MenuItems[0];
     }
 
