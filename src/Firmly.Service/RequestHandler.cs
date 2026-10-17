@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 using Firmly.Core;
@@ -13,12 +14,16 @@ namespace Firmly.Service;
 /// </summary>
 /// <param name="requireAdminForAllChanges">Reads the machine lockdown policy; called on every request.</param>
 /// <param name="overrides">Where the charge override is kept across restarts.</param>
+/// <param name="passwords">Encrypts a BIOS password kept to switch back with; DPAPI by default.</param>
+/// <param name="allowSavedBiosPassword">Reads the machine policy on keeping the BIOS password; called on every use.</param>
 internal sealed class RequestHandler(
     ILogger<RequestHandler> logger,
     FirmwareProviderResolver resolver,
     Func<bool> requireAdminForAllChanges,
     TimeProvider time,
-    ChargeOverrideStore overrides)
+    ChargeOverrideStore overrides,
+    IPasswordProtector? passwords = null,
+    Func<bool>? allowSavedBiosPassword = null)
 {
     // Requests per account: the app makes two at start-up and a few a second at most while someone clicks around.
     // A UI bug once sent 37,000 requests in 90 seconds; the excess is refused before touching firmware.
@@ -34,6 +39,9 @@ internal sealed class RequestHandler(
     // Repeats of the same warning within this window are counted rather than logged.
     private static readonly TimeSpan WarningWindow = TimeSpan.FromMinutes(1);
 
+    // Whether a BIOS password is set changes rarely (in the BIOS setup, so after a restart): read it this often at most.
+    private static readonly TimeSpan PasswordCheckInterval = TimeSpan.FromMinutes(5);
+
     // Longer names or values than any firmware uses are refused, so they can't bloat the log either.
     private const int MaxTextLength = 256;
 
@@ -41,7 +49,11 @@ internal sealed class RequestHandler(
     private static readonly string ServiceVersion =
         typeof(RequestHandler).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
 
-    private static readonly string[] Features = [IpcFeatures.Firmware, IpcFeatures.ChargeModes, IpcFeatures.ChargeOverride];
+    private static readonly string[] Features =
+        [IpcFeatures.Firmware, IpcFeatures.ChargeModes, IpcFeatures.ChargeOverride, IpcFeatures.BiosPassword];
+
+    private readonly IPasswordProtector _passwords = passwords ?? new DpapiPasswordProtector();
+    private readonly Func<bool> _allowSavedBiosPassword = allowSavedBiosPassword ?? (() => true);
 
     // One firmware operation at a time, so a read can't interleave with another client's write and its read-back.
     // Also guards the charge override.
@@ -54,6 +66,10 @@ internal sealed class RequestHandler(
     private StoredChargeOverride? _override;
     private bool _overrideLoaded;
     private DateTimeOffset _nextRevertAttempt;
+    // The override has ended, but switching back needs the BIOS password, which someone must send. Not retried
+    // meanwhile: a BIOS may count every attempt without the right password against it.
+    private bool _waitingForPassword;
+    private (bool IsSet, long CheckedAt)? _biosPassword;
 
     public void LogStartupStatus()
     {
@@ -90,7 +106,8 @@ internal sealed class RequestHandler(
 
         if (request.Command == IpcCommand.GetStatus)
             return new IpcResponse(Status: new ServiceStatus(
-                provider?.Vendor, caller.IsAdministrator, lockdown, ServiceVersion, IpcConstants.ProtocolVersion, Features));
+                provider?.Vendor, caller.IsAdministrator, lockdown, ServiceVersion, IpcConstants.ProtocolVersion, Features,
+                _allowSavedBiosPassword()));
 
         if (provider is null)
             return IpcResponse.Fail(IpcError.Unsupported, "This machine has no supported firmware interface.");
@@ -154,7 +171,7 @@ internal sealed class RequestHandler(
             }
 
             var now = time.GetUtcNow();
-            if (now < current.Until || now < _nextRevertAttempt)
+            if (now < current.Until || now < _nextRevertAttempt || _waitingForPassword)
                 return;
 
             if (modes.Find(current.RestoreModeId) is not { } restore)
@@ -165,11 +182,29 @@ internal sealed class RequestHandler(
                 return;
             }
 
+            var password = KeptPassword(current);
+            if (password is null && IsBiosPasswordSet(gateway))
+            {
+                _waitingForPassword = true;
+                logger.LogInformation("The timed '{Mode}' has ended; switching back to '{Restore}' needs the BIOS password, which Firmly will ask for.",
+                    current.ModeId, restore.Label);
+                return;
+            }
+
             try
             {
-                gateway.SetChargeMode(restore.Id, FirmwareCaller.Administrator);
+                gateway.SetChargeMode(restore.Id, FirmwareCaller.Administrator, password);
                 SaveOverride(null);
                 logger.LogInformation("Switched the battery back to '{Mode}', as {User} asked.", restore.Label, current.SetBy);
+            }
+            catch (FirmwareWriteException ex) when (ex.PasswordRejected)
+            {
+                // The kept password no longer works (changed in the BIOS setup?): forget it rather than try it again.
+                _biosPassword = null;
+                SaveOverride(current with { ProtectedBiosPassword = null });
+                _waitingForPassword = true;
+                logger.LogWarning("Couldn't switch the battery back to '{Mode}': the BIOS didn't accept the password. Firmly will ask for it.",
+                    restore.Label);
             }
             catch (Exception ex) when (ex is FirmwarePolicyException or FirmwareWriteException or WriteLimitExceededException)
             {
@@ -194,7 +229,8 @@ internal sealed class RequestHandler(
             ReportedChargeLimit: provider.GetReportedChargeLimit(settings),
             ChargeModes: modes,
             ChargeModeAccess: modes is null ? null : gateway.GetChargeModeAccess(modes, settings, caller),
-            ChargeOverride: Override?.ToIpc());
+            ChargeOverride: Override?.ToIpc(_waitingForPassword),
+            BiosPasswordSet: IsBiosPasswordSet(gateway));
     }
 
     private IpcResponse SetSetting(FirmwareGateway gateway, IpcRequest request, FirmwareCaller caller, string callerName)
@@ -237,6 +273,10 @@ internal sealed class RequestHandler(
         var now = time.GetUtcNow();
         if (until <= now || until > now + MaxOverride)
             return IpcResponse.Fail(IpcError.BadRequest, $"The end time must be in the next {MaxOverride.TotalDays:0} days.");
+        if (request.KeepBiosPassword && !_allowSavedBiosPassword())
+            return IpcResponse.Fail(IpcError.NotAllowed, "This PC's policy doesn't let Firmly keep the BIOS password.");
+        if (request.KeepBiosPassword && string.IsNullOrEmpty(request.BiosPassword))
+            return IpcResponse.Fail(IpcError.BadRequest, "There's no BIOS password to keep.");
 
         return Change(callerName, request.Name, () =>
         {
@@ -244,10 +284,13 @@ internal sealed class RequestHandler(
                 throw new FirmwarePolicyException($"'{request.Value}' is not a charge mode on this device.");
 
             var modes = gateway.SetChargeMode(request.Name, caller, request.BiosPassword);
-            SaveOverride(new StoredChargeOverride(request.Name, request.Value, until, callerName));
+            // Kept only once the BIOS has accepted it.
+            var kept = request.KeepBiosPassword ? _passwords.Protect(request.BiosPassword!) : null;
+            SaveOverride(new StoredChargeOverride(request.Name, request.Value, until, callerName, kept));
             _nextRevertAttempt = default;
-            logger.LogInformation("{User} chose '{Mode}' until {Until:u}, then '{Restore}'.",
-                callerName, modes.Current?.Label, until, modes.Find(request.Value)?.Label);
+            logger.LogInformation("{User} chose '{Mode}' until {Until:u}, then '{Restore}'{Kept}.",
+                callerName, modes.Current?.Label, until, modes.Find(request.Value)?.Label,
+                kept is null ? "" : ", keeping the BIOS password to switch back with");
             return Snapshot(gateway, provider, caller);
         });
     }
@@ -303,6 +346,14 @@ internal sealed class RequestHandler(
                     what, callerName, LogThrottle.Note(repeats));
             return TooManyRequests("Too many firmware changes in a short time", ex.RetryAfter);
         }
+        catch (FirmwareWriteException ex) when (ex.PasswordRejected)
+        {
+            _biosPassword = null;
+            if (_warnings.ShouldLog($"password|{callerName}", out var repeats))
+                logger.LogWarning("Firmware rejected '{Name}' from {User}: the BIOS password was missing or wrong.{Repeats}",
+                    what, callerName, LogThrottle.Note(repeats));
+            return IpcResponse.Fail(IpcError.BiosPasswordRequired, "The BIOS administrator password is missing or wrong.", ex.VendorCode);
+        }
         catch (FirmwareWriteException ex)
         {
             if (_warnings.ShouldLog($"rejected|{callerName}|{what}", out var repeats))
@@ -333,10 +384,37 @@ internal sealed class RequestHandler(
         }
     }
 
+    // Read again after PasswordCheckInterval, or once a password was refused (it may have been set meanwhile).
+    private bool IsBiosPasswordSet(FirmwareGateway gateway)
+    {
+        if (_biosPassword is { } known && time.GetElapsedTime(known.CheckedAt) < PasswordCheckInterval)
+            return known.IsSet;
+
+        var isSet = gateway.IsBiosPasswordSet();
+        _biosPassword = (isSet, time.GetTimestamp());
+        return isSet;
+    }
+
+    private string? KeptPassword(StoredChargeOverride current)
+    {
+        if (current.ProtectedBiosPassword is not { } kept)
+            return null;
+        try
+        {
+            return _passwords.Unprotect(kept);
+        }
+        catch (CryptographicException ex)
+        {
+            logger.LogError(ex, "Couldn't decrypt the BIOS password kept for switching back.");
+            return null;
+        }
+    }
+
     private void SaveOverride(StoredChargeOverride? value)
     {
         _override = value;
         _overrideLoaded = true;
+        _waitingForPassword = false;
         try
         {
             overrides.Save(value);

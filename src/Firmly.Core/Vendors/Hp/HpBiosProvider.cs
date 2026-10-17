@@ -70,9 +70,26 @@ public sealed class HpBiosProvider : IFirmwareProvider
             }
         });
 
+        // 6 is also what a missing password gives, once one is set.
         if (status != 0)
-            throw new FirmwareWriteException($"HP BIOS rejected '{name}': {DescribeStatus(status)}", status);
+            throw new FirmwareWriteException($"HP BIOS rejected '{name}': {DescribeStatus(status)}", status, passwordRejected: status == 6);
     }
+
+    // The BIOS administrator password is HP's "Setup Password"; the power-on password doesn't guard settings.
+    public bool IsBiosPasswordSet() => WithAccessCheck(() =>
+    {
+        using var wmi = WmiNamespace.Connect(Namespace);
+        var passwords = wmi.Query("SELECT Name, IsSet FROM HP_BIOSPassword WHERE Name = 'Setup Password'");
+        try
+        {
+            return passwords.Any(p => p.GetInt32("IsSet") is 1);
+        }
+        finally
+        {
+            foreach (var password in passwords)
+                password.Dispose();
+        }
+    });
 
     // Battery Health Manager's values, as HP's BIOS and documentation name them.
     private static readonly EnumerationChargeModes BatteryHealthManager = new("Battery Health Manager",

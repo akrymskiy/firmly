@@ -11,10 +11,18 @@ internal static class MachinePolicy
     private const string KeyPath = @"SOFTWARE\Policies\Firmly";
 
     /// <summary>DWORD "RequireAdminForAllChanges" = 1: standard users cannot change any setting.</summary>
-    public static bool RequireAdminForAllChanges()
+    public static bool RequireAdminForAllChanges() => IsSet("RequireAdminForAllChanges");
+
+    /// <summary>
+    /// DWORD "DisallowSavedBiosPassword" = 1: the BIOS password may not be kept anywhere, neither by the service for a
+    /// timed charge nor by the app (with Windows Hello); it must be typed each time.
+    /// </summary>
+    public static bool AllowSavedBiosPassword() => !IsSet("DisallowSavedBiosPassword");
+
+    private static bool IsSet(string name)
     {
         using var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
         using var key = hklm.OpenSubKey(KeyPath);
-        return key?.GetValue("RequireAdminForAllChanges") is int value && value != 0;
+        return key?.GetValue(name) is int value && value != 0;
     }
 }

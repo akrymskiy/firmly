@@ -49,7 +49,7 @@ public class RequestHandlerTests
 
         Assert.Equal(IpcConstants.ProtocolVersion, status.ProtocolVersion);
         Assert.Matches(@"^\d+\.\d+\.\d+", status.ServiceVersion);
-        Assert.Equal([IpcFeatures.Firmware, IpcFeatures.ChargeModes, IpcFeatures.ChargeOverride], status.Features!);
+        Assert.Equal([IpcFeatures.Firmware, IpcFeatures.ChargeModes, IpcFeatures.ChargeOverride, IpcFeatures.BiosPassword], status.Features!);
     }
 
     [Fact]

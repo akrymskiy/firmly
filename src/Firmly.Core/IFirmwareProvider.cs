@@ -18,8 +18,13 @@ public interface IFirmwareProvider
     /// <summary>Returns all settings except BIOS passwords.</summary>
     IReadOnlyList<FirmwareSetting> GetSettings();
 
-    /// <exception cref="FirmwareWriteException">The firmware rejected the change.</exception>
+    /// <exception cref="FirmwareWriteException">
+    /// The firmware rejected the change; <see cref="FirmwareWriteException.PasswordRejected"/> when for the password.
+    /// </exception>
     void SetSetting(string name, string value, string? biosPassword);
+
+    /// <summary>Whether a BIOS administrator password is set, so that changes need it.</summary>
+    bool IsBiosPasswordSet();
 
     /// <summary>
     /// The charge modes the firmware offers (see <see cref="ChargeMode"/>), worked out from <paramref name="settings"/>;

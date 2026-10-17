@@ -26,4 +26,10 @@ public static class IpcFeatures
 
     /// <summary><see cref="IpcCommand.SetChargeOverride"/> and <see cref="IpcCommand.CancelChargeOverride"/>.</summary>
     public const string ChargeOverride = "chargeOverride";
+
+    /// <summary>
+    /// <see cref="FirmwareSnapshot.BiosPasswordSet"/>, <see cref="IpcError.BiosPasswordRequired"/>, and the BIOS password
+    /// with every change, including keeping it for a charge override (<see cref="IpcRequest.KeepBiosPassword"/>).
+    /// </summary>
+    public const string BiosPassword = "biosPassword";
 }

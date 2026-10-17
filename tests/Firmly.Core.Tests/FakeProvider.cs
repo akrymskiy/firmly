@@ -22,7 +22,12 @@ internal sealed class FakeProvider(
     /// <summary>Charge modes worked out from the settings; none unless a test sets this.</summary>
     public EnumerationChargeModes? ChargeModeSetting { get; set; }
 
+    /// <summary>A BIOS administrator password: when set, writes need it.</summary>
+    public string? BiosPassword { get; set; }
+
     public bool IsSupported() => supported;
+
+    public bool IsBiosPasswordSet() => BiosPassword is not null;
 
     public ChargeModes? GetChargeModes(IReadOnlyList<FirmwareSetting> settings) => ChargeModeSetting?.From(settings);
 
@@ -33,6 +38,8 @@ internal sealed class FakeProvider(
     public void SetSetting(string name, string value, string? biosPassword)
     {
         Writes.Add((name, value, biosPassword));
+        if (BiosPassword is not null && biosPassword != BiosPassword)
+            throw new FirmwareWriteException("Wrong or missing BIOS password.", 6, passwordRejected: true);
         if (IgnoreWrites)
             return;
 

@@ -23,7 +23,9 @@ builder.Services.AddSingleton(sp => new RequestHandler(
     sp.GetRequiredService<FirmwareProviderResolver>(),
     MachinePolicy.RequireAdminForAllChanges,
     sp.GetRequiredService<TimeProvider>(),
-    new ChargeOverrideStore(ChargeOverrideStore.DefaultPath)));
+    new ChargeOverrideStore(ChargeOverrideStore.DefaultPath),
+    new DpapiPasswordProtector(),
+    MachinePolicy.AllowSavedBiosPassword));
 builder.Services.AddHostedService<PipeServer>();
 builder.Services.AddHostedService<ChargeOverrideWorker>();
 

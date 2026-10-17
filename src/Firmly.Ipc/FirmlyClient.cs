@@ -39,15 +39,18 @@ public sealed class FirmlyClient
     /// <summary>
     /// Switches to <paramref name="modeId"/> now; the service switches to <paramref name="restoreModeId"/> at <paramref name="until"/>.
     /// </summary>
+    /// <param name="keepBiosPassword">Let the service keep <paramref name="biosPassword"/> until then, to switch back with.</param>
     /// <exception cref="FirmlyServiceException">The service is unavailable or refused the change.</exception>
     public Task<FirmwareSnapshot> SetChargeOverrideAsync(
-        string modeId, string restoreModeId, DateTimeOffset until, CancellationToken ct = default) =>
-        GetSnapshotAsync(new IpcRequest(IpcCommand.SetChargeOverride, modeId, restoreModeId, Until: until), ct);
+        string modeId, string restoreModeId, DateTimeOffset until, string? biosPassword = null, bool keepBiosPassword = false,
+        CancellationToken ct = default) =>
+        GetSnapshotAsync(new IpcRequest(
+            IpcCommand.SetChargeOverride, modeId, restoreModeId, biosPassword, until, keepBiosPassword), ct);
 
     /// <summary>Ends the charge override now, switching to the mode it would have switched back to.</summary>
     /// <exception cref="FirmlyServiceException">The service is unavailable or refused the change.</exception>
-    public Task<FirmwareSnapshot> CancelChargeOverrideAsync(CancellationToken ct = default) =>
-        GetSnapshotAsync(new IpcRequest(IpcCommand.CancelChargeOverride), ct);
+    public Task<FirmwareSnapshot> CancelChargeOverrideAsync(string? biosPassword = null, CancellationToken ct = default) =>
+        GetSnapshotAsync(new IpcRequest(IpcCommand.CancelChargeOverride, BiosPassword: biosPassword), ct);
 
     private static async Task<FirmwareSnapshot> GetSnapshotAsync(IpcRequest request, CancellationToken ct)
     {
@@ -57,7 +60,8 @@ public sealed class FirmlyClient
             response.ReportedChargeLimit,
             response.ChargeModes,
             response.ChargeModeAccess ?? FirmwareChangeAccess.ReadOnly,
-            response.ChargeOverride);
+            response.ChargeOverride,
+            response.BiosPasswordSet);
     }
 
     /// <returns>The setting as read back from firmware after the change.</returns>

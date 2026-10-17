@@ -59,6 +59,9 @@ public sealed class FirmwareGateway(IFirmwareProvider provider, bool requireAdmi
         return updated;
     }
 
+    /// <summary>Whether a BIOS administrator password is set, so that changes need it.</summary>
+    public bool IsBiosPasswordSet() => provider.IsBiosPasswordSet();
+
     /// <summary>The charge modes the firmware offers; null when it offers none Firmly knows.</summary>
     public ChargeModes? GetChargeModes() => provider.GetChargeModes(GetSettings());
 

@@ -7,9 +7,17 @@ using Firmly.Ipc;
 namespace Firmly.Service;
 
 /// <summary>A charge override as the service keeps it: <see cref="ChargeOverride"/> plus who chose it.</summary>
-internal sealed record StoredChargeOverride(string ModeId, string RestoreModeId, DateTimeOffset Until, string SetBy)
+/// <param name="ProtectedBiosPassword">
+/// The BIOS password to switch back with, encrypted (<see cref="IPasswordProtector"/>); only when the user chose so.
+/// </param>
+internal sealed record StoredChargeOverride(
+    string ModeId, string RestoreModeId, DateTimeOffset Until, string SetBy, string? ProtectedBiosPassword = null)
 {
-    public ChargeOverride ToIpc() => new(ModeId, RestoreModeId, Until);
+    public ChargeOverride ToIpc(bool waitingForPassword) =>
+        new(ModeId, RestoreModeId, Until, ProtectedBiosPassword is not null, waitingForPassword);
+
+    // Never print even the encrypted password.
+    public override string ToString() => $"{ModeId} until {Until:u}, then {RestoreModeId}, set by {SetBy}";
 }
 
 /// <summary>Keeps the charge override in a file, so the switch back still happens after a restart or reboot.</summary>
