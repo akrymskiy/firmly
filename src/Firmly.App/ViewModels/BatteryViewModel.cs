@@ -5,6 +5,16 @@ using Windows.System.Power;
 
 namespace Firmly.App.ViewModels;
 
+/// <summary>Where the battery's power is going, for the tray icon.</summary>
+public enum PowerState
+{
+    Unknown,
+    Charging,
+    OnBattery,
+    /// <summary>Plugged in but not charging: full, or held below full by the firmware.</summary>
+    PluggedIn,
+}
+
 /// <summary>
 /// The battery's real charge, live from Windows. While the firmware's charge limit rescales what Windows shows,
 /// the real figure is worked out with <see cref="BatteryCharge"/>.
@@ -33,6 +43,13 @@ public partial class BatteryViewModel : ObservableObject
 
     public bool HasReading => Charge.Length > 0;
 
+    /// <summary>The real charge; the limit itself while the firmware hides how far above it the battery is.</summary>
+    [ObservableProperty]
+    public partial int? Percent { get; set; }
+
+    [ObservableProperty]
+    public partial PowerState Power { get; set; }
+
     /// <summary>Called whenever settings load, since the firmware's charge limit changes what Windows reports.</summary>
     public void SetReportedChargeLimit(double? limit)
     {
@@ -49,8 +66,19 @@ public partial class BatteryViewModel : ObservableObject
         {
             Charge = "";
             Details = "";
+            Percent = null;
+            Power = PowerState.Unknown;
             return;
         }
+
+        Percent = charge.Percent;
+        Power = report.Status switch
+        {
+            BatteryStatus.Charging => PowerState.Charging,
+            BatteryStatus.Discharging => PowerState.OnBattery,
+            BatteryStatus.Idle => PowerState.PluggedIn,
+            _ => PowerState.Unknown,
+        };
 
         Charge = charge.AtLeast ? $"Battery {charge.Percent}% or more" : $"Battery {charge.Percent}%";
 

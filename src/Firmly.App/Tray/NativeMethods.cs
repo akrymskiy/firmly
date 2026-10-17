@@ -6,6 +6,7 @@ namespace Firmly.App.Tray;
 internal static unsafe partial class NativeMethods
 {
     public const uint WM_NULL = 0x0000;
+    public const uint WM_SETTINGCHANGE = 0x001A;
     public const uint WM_CONTEXTMENU = 0x007B;
     public const uint WM_USER = 0x0400;
     public const uint WM_APP = 0x8000;
@@ -20,8 +21,6 @@ internal static unsafe partial class NativeMethods
     public const uint MF_BYCOMMAND = 0x0000;
     public const uint TPM_RIGHTBUTTON = 0x0002, TPM_NONOTIFY = 0x0080, TPM_RETURNCMD = 0x0100;
 
-    public const uint IMAGE_ICON = 1;
-    public const uint LR_LOADFROMFILE = 0x0010;
     public const int SM_CXSMICON = 49;
 
     [StructLayout(LayoutKind.Sequential)]
@@ -39,6 +38,16 @@ internal static unsafe partial class NativeMethods
         public char* lpszMenuName;
         public char* lpszClassName;
         public nint hIconSm;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct ICONINFO
+    {
+        public int fIcon;
+        public int xHotspot;
+        public int yHotspot;
+        public nint hbmMask;
+        public nint hbmColor;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -116,15 +125,31 @@ internal static unsafe partial class NativeMethods
     [LibraryImport("kernel32.dll", EntryPoint = "GetModuleHandleW", StringMarshalling = StringMarshalling.Utf16)]
     public static partial nint GetModuleHandle(string? name);
 
-    [LibraryImport("user32.dll", EntryPoint = "LoadImageW", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
-    public static partial nint LoadImage(nint instance, string name, uint type, int width, int height, uint flags);
-
     [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool DestroyIcon(nint icon);
 
     [LibraryImport("user32.dll")]
     public static partial uint GetDpiForWindow(nint hwnd);
+
+    [LibraryImport("gdi32.dll")]
+    public static partial nint CreateBitmap(int width, int height, uint planes, uint bitsPerPixel, void* bits);
+
+    [LibraryImport("gdi32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool DeleteObject(nint gdiObject);
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    public static partial nint CreateIconIndirect(ICONINFO* info);
+
+    public const uint LOAD_LIBRARY_SEARCH_SYSTEM32 = 0x0800;
+
+    [LibraryImport("kernel32.dll", EntryPoint = "LoadLibraryExW", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial nint LoadLibraryEx(string name, nint reserved, uint flags);
+
+    /// <param name="nameOrOrdinal">A function name, or an ordinal in the low word.</param>
+    [LibraryImport("kernel32.dll")]
+    public static partial nint GetProcAddress(nint module, nint nameOrOrdinal);
 
     [LibraryImport("user32.dll")]
     public static partial int GetSystemMetricsForDpi(int index, uint dpi);

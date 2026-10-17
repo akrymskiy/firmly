@@ -86,7 +86,10 @@ public partial class App : Application
         // Started at sign-in: stay in the notification area until asked.
         var kind = Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs().Kind;
         if (kind != Microsoft.Windows.AppLifecycle.ExtendedActivationKind.StartupTask || !HasTray)
+        {
             Window.Activate();
+            s_tray?.Update();
+        }
 
         Session.RefreshCommand.Execute(null);
         Session.StartAutoRefresh();
@@ -107,6 +110,7 @@ public partial class App : Application
     {
         Window.AppWindow.Show();
         Window.Activate();
+        s_tray?.Update();
         _ = Session.RefreshQuietlyAsync();
     }
 

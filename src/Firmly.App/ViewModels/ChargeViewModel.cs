@@ -7,7 +7,8 @@ using Firmly.Ipc;
 namespace Firmly.App.ViewModels;
 
 /// <summary>One charge mode on the Battery page: the vendor's name, and what it does in plain words.</summary>
-public sealed record ChargeModeOption(string Id, string Label, string Explanation, ChargeModeKind Kind)
+/// <param name="LimitPercent">Where charging stops, for <see cref="ChargeModeKind.Limited"/>.</param>
+public sealed record ChargeModeOption(string Id, string Label, string Explanation, ChargeModeKind Kind, int? LimitPercent = null)
 {
     // Screen readers name each radio button and list item by this.
     public override string ToString() => $"{Label}. {Explanation}";
@@ -32,6 +33,7 @@ public partial class ChargeViewModel(FirmlyClient client, Action<FirmwareSnapsho
 
     /// <summary>Index of the firmware's current mode in <see cref="Modes"/>; -1 when it matches none.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CurrentLimitPercent))]
     public partial int SelectedIndex { get; set; } = -1;
 
     [ObservableProperty]
@@ -60,6 +62,12 @@ public partial class ChargeViewModel(FirmlyClient client, Action<FirmwareSnapsho
     public bool HasNote => Note.Length > 0;
 
     public bool CanChange => Access == FirmwareChangeAccess.Allowed && !IsBusy;
+
+    /// <summary>Where the current mode stops charging; null when it charges fully or decides by itself.</summary>
+    public int? CurrentLimitPercent =>
+        SelectedIndex >= 0 && SelectedIndex < Modes.Count && Modes[SelectedIndex].Kind == ChargeModeKind.Limited
+            ? Modes[SelectedIndex].LimitPercent
+            : null;
 
     /// <summary>Whether to offer a full charge for a while: the device has a full-charge mode and none is running.</summary>
     public bool IsOverrideOffered => IsAvailable && SupportsOverride && FullMode is not null && !HasOverride;
@@ -122,7 +130,7 @@ public partial class ChargeViewModel(FirmlyClient client, Action<FirmwareSnapsho
             return;
         }
 
-        var options = modes.Modes.Select(m => new ChargeModeOption(m.Id, m.Label, Explain(m), m.Kind)).ToList();
+        var options = modes.Modes.Select(m => new ChargeModeOption(m.Id, m.Label, Explain(m), m.Kind, m.LimitPercent)).ToList();
         var rebuilt = !options.SequenceEqual(Modes);
         if (rebuilt)
         {

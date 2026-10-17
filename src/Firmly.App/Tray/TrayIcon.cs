@@ -39,6 +39,7 @@ internal sealed unsafe class TrayIcon : IDisposable
 
     public TrayIcon()
     {
+        DarkMenus.Enable();
         var instance = GetModuleHandle(null);
         fixed (char* className = WindowClass)
         {
@@ -64,6 +65,9 @@ internal sealed unsafe class TrayIcon : IDisposable
 
     /// <summary>Right-clicked, or the menu key pressed; the menu should open at the given screen point.</summary>
     public event Action<int, int>? MenuRequested;
+
+    /// <summary>Windows switched between light and dark, so the icon may need redrawing.</summary>
+    public event Action? ThemeChanged;
 
     /// <summary>The DPI the notification area draws at, for sizing the icon.</summary>
     public uint Dpi => GetDpiForWindow(_hwnd) is var dpi and > 0 ? dpi : 96;
@@ -211,6 +215,14 @@ internal sealed unsafe class TrayIcon : IDisposable
                             break;
                     }
                     return 0;
+                }
+
+                // "ImmersiveColorSet": light or dark mode changed.
+                if (message == WM_SETTINGCHANGE && lParam != 0
+                    && new string((char*)lParam) == "ImmersiveColorSet")
+                {
+                    DarkMenus.Refresh();
+                    icon.ThemeChanged?.Invoke();
                 }
 
                 if (message == icon._taskbarCreated && icon._taskbarCreated != 0)
