@@ -76,18 +76,26 @@ public sealed class HpBiosProvider : IFirmwareProvider
     }
 
     // The BIOS administrator password is HP's "Setup Password"; the power-on password doesn't guard settings.
+    // When a model can't say, report none: a change then fails with status 6 if there is one, and Firmly asks for it.
     public bool IsBiosPasswordSet() => WithAccessCheck(() =>
     {
-        using var wmi = WmiNamespace.Connect(Namespace);
-        var passwords = wmi.Query("SELECT Name, IsSet FROM HP_BIOSPassword WHERE Name = 'Setup Password'");
         try
         {
-            return passwords.Any(p => p.GetInt32("IsSet") is 1);
+            using var wmi = WmiNamespace.Connect(Namespace);
+            var passwords = wmi.Query("SELECT Name, IsSet FROM HP_BIOSPassword WHERE Name = 'Setup Password'");
+            try
+            {
+                return passwords.Any(p => p.GetInt32("IsSet") is 1);
+            }
+            finally
+            {
+                foreach (var password in passwords)
+                    password.Dispose();
+            }
         }
-        finally
+        catch (Exception ex) when (ex is WmiException { IsAccessDenied: false } or InvalidCastException)
         {
-            foreach (var password in passwords)
-                password.Dispose();
+            return false;
         }
     });
 
