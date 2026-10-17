@@ -28,9 +28,16 @@ $isAdmin = [Security.Principal.WindowsPrincipal]::new([Security.Principal.Window
 
 if (-not $Elevated) {
     if (-not $Uninstall) {
-        # Build before elevating, so the build output stays owned by you.
+        # Build before elevating, so the build output stays owned by you. Start empty: files left from earlier
+        # builds would be copied into the layout too.
+        if (Test-Path $staging) { Remove-Item $staging -Recurse -Force }
         dotnet build "$root\src\Firmly.App" -c $Configuration "-p:Platform=$Platform" -p:FirmlyPackageService=true "-p:OutDir=$staging\" -v q -nologo
         if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+        # Native AOT gives one exe; a trimmed build (-p:PublishAot=false) keeps a .dll beside it.
+        $serviceFiles = Get-ChildItem "$staging\Firmly.Service" -Recurse -File
+        $kind = (Test-Path "$staging\Firmly.Service\Firmly.Service.dll") ? 'trimmed, not native AOT' : 'native AOT'
+        Write-Host ('Service: {0}, {1:N1} MB in {2} files' -f $kind, (($serviceFiles | Measure-Object Length -Sum).Sum / 1MB), $serviceFiles.Count)
     }
     if (-not $isAdmin) {
         $arguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$PSCommandPath`"",

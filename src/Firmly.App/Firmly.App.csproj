@@ -71,12 +71,15 @@
     <PropertyGroup>
       <_FirmlyServicePublishDir>$(MSBuildProjectDirectory)\$(IntermediateOutputPath)FirmlyService\</_FirmlyServicePublishDir>
     </PropertyGroup>
+    <!-- Emptied first: files from an earlier kind of build (e.g. trimmed rather than AOT) would be packaged too. -->
+    <RemoveDir Directories="$(_FirmlyServicePublishDir)" />
     <!-- Not OutDir: when it's set for the app (tools\install-package.ps1 does), the service would build into the app's folder. -->
     <MSBuild Projects="..\Firmly.Service\Firmly.Service.csproj" Targets="Restore;Publish"
              Properties="Configuration=$(Configuration);Platform=$(Platform);RuntimeIdentifier=$(RuntimeIdentifier);SelfContained=true;PublishDir=$(_FirmlyServicePublishDir)"
              RemoveProperties="OutDir" />
     <ItemGroup>
-      <_FirmlyServiceFile Include="$(_FirmlyServicePublishDir)**" />
+      <!-- Without debug symbols: the AOT service's are 27 MB. -->
+      <_FirmlyServiceFile Include="$(_FirmlyServicePublishDir)**" Exclude="$(_FirmlyServicePublishDir)**\*.pdb" />
       <Content Include="@(_FirmlyServiceFile)"
                Link="Firmly.Service\%(_FirmlyServiceFile.RecursiveDir)%(_FirmlyServiceFile.Filename)%(_FirmlyServiceFile.Extension)"
                CopyToOutputDirectory="PreserveNewest" />
