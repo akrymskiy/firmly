@@ -19,7 +19,12 @@ internal sealed class FakeProvider(
 
     public double? ReportedChargeLimit { get; set; }
 
+    /// <summary>Charge modes worked out from the settings; none unless a test sets this.</summary>
+    public EnumerationChargeModes? ChargeModeSetting { get; set; }
+
     public bool IsSupported() => supported;
+
+    public ChargeModes? GetChargeModes(IReadOnlyList<FirmwareSetting> settings) => ChargeModeSetting?.From(settings);
 
     public double? GetReportedChargeLimit(IReadOnlyList<FirmwareSetting> settings) => ReportedChargeLimit;
 

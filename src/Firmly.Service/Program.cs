@@ -22,8 +22,10 @@ builder.Services.AddSingleton(sp => new RequestHandler(
     sp.GetRequiredService<ILogger<RequestHandler>>(),
     sp.GetRequiredService<FirmwareProviderResolver>(),
     MachinePolicy.RequireAdminForAllChanges,
-    sp.GetRequiredService<TimeProvider>()));
+    sp.GetRequiredService<TimeProvider>(),
+    new ChargeOverrideStore(ChargeOverrideStore.DefaultPath)));
 builder.Services.AddHostedService<PipeServer>();
+builder.Services.AddHostedService<ChargeOverrideWorker>();
 
 var host = builder.Build();
 host.Run();

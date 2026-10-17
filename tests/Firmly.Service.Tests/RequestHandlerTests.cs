@@ -29,7 +29,8 @@ public class RequestHandlerTests
         _logger,
         new FirmwareProviderResolver([provider ?? _provider]),
         () => _lockdown,
-        _time);
+        _time,
+        new ChargeOverrideStore(Path.Combine(Path.GetTempPath(), $"firmly-test-{Guid.NewGuid():N}", "override.json"), requireTrustedFolder: false));
 
     [Fact]
     public async Task GetStatus_ReportsVendorCallerAndLockdown()
@@ -48,7 +49,7 @@ public class RequestHandlerTests
 
         Assert.Equal(IpcConstants.ProtocolVersion, status.ProtocolVersion);
         Assert.Matches(@"^\d+\.\d+\.\d+", status.ServiceVersion);
-        Assert.Equal([IpcFeatures.Firmware], status.Features!);
+        Assert.Equal([IpcFeatures.Firmware, IpcFeatures.ChargeModes, IpcFeatures.ChargeOverride], status.Features!);
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 using System.IO.Pipes;
+using Firmly.Core;
 using System.Security.Principal;
 
 namespace Firmly.Ipc;
@@ -27,10 +28,36 @@ public sealed class FirmlyClient
     }
 
     /// <exception cref="FirmlyServiceException">The service is unavailable or returned an error.</exception>
-    public async Task<FirmwareSnapshot> GetSettingsAsync(CancellationToken ct = default)
+    public Task<FirmwareSnapshot> GetSettingsAsync(CancellationToken ct = default) =>
+        GetSnapshotAsync(new IpcRequest(IpcCommand.GetSettings), ct);
+
+    /// <returns>Settings and charge modes as read back from firmware after the change.</returns>
+    /// <exception cref="FirmlyServiceException">The service is unavailable or refused the change.</exception>
+    public Task<FirmwareSnapshot> SetChargeModeAsync(string modeId, string? biosPassword = null, CancellationToken ct = default) =>
+        GetSnapshotAsync(new IpcRequest(IpcCommand.SetChargeMode, modeId, BiosPassword: biosPassword), ct);
+
+    /// <summary>
+    /// Switches to <paramref name="modeId"/> now; the service switches to <paramref name="restoreModeId"/> at <paramref name="until"/>.
+    /// </summary>
+    /// <exception cref="FirmlyServiceException">The service is unavailable or refused the change.</exception>
+    public Task<FirmwareSnapshot> SetChargeOverrideAsync(
+        string modeId, string restoreModeId, DateTimeOffset until, CancellationToken ct = default) =>
+        GetSnapshotAsync(new IpcRequest(IpcCommand.SetChargeOverride, modeId, restoreModeId, Until: until), ct);
+
+    /// <summary>Ends the charge override now, switching to the mode it would have switched back to.</summary>
+    /// <exception cref="FirmlyServiceException">The service is unavailable or refused the change.</exception>
+    public Task<FirmwareSnapshot> CancelChargeOverrideAsync(CancellationToken ct = default) =>
+        GetSnapshotAsync(new IpcRequest(IpcCommand.CancelChargeOverride), ct);
+
+    private static async Task<FirmwareSnapshot> GetSnapshotAsync(IpcRequest request, CancellationToken ct)
     {
-        var response = await SendAsync(new IpcRequest(IpcCommand.GetSettings), ct);
-        return new FirmwareSnapshot(response.Settings ?? throw MissingResult(), response.ReportedChargeLimit);
+        var response = await SendAsync(request, ct);
+        return new FirmwareSnapshot(
+            response.Settings ?? throw MissingResult(),
+            response.ReportedChargeLimit,
+            response.ChargeModes,
+            response.ChargeModeAccess ?? FirmwareChangeAccess.ReadOnly,
+            response.ChargeOverride);
     }
 
     /// <returns>The setting as read back from firmware after the change.</returns>

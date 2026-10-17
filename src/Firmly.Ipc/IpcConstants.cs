@@ -20,4 +20,10 @@ public static class IpcFeatures
 {
     /// <summary>Reading and changing firmware settings: <see cref="IpcCommand.GetSettings"/> and <see cref="IpcCommand.SetSetting"/>.</summary>
     public const string Firmware = "firmware";
+
+    /// <summary>Charge modes in settings responses, and <see cref="IpcCommand.SetChargeMode"/>.</summary>
+    public const string ChargeModes = "chargeModes";
+
+    /// <summary><see cref="IpcCommand.SetChargeOverride"/> and <see cref="IpcCommand.CancelChargeOverride"/>.</summary>
+    public const string ChargeOverride = "chargeOverride";
 }

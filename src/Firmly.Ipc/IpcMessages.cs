@@ -7,12 +7,31 @@ public enum IpcCommand
     GetStatus,
     GetSettings,
     SetSetting,
+
+    /// <summary>Switches to the charge mode <see cref="IpcRequest.Name"/>. Answers like <see cref="GetSettings"/>.</summary>
+    SetChargeMode,
+
+    /// <summary>
+    /// Switches to the charge mode <see cref="IpcRequest.Name"/> until <see cref="IpcRequest.Until"/>, then to
+    /// <see cref="IpcRequest.Value"/>. Answers like <see cref="GetSettings"/>.
+    /// </summary>
+    SetChargeOverride,
+
+    /// <summary>
+    /// Ends the charge override now, switching to the mode it would have switched back to.
+    /// Answers like <see cref="GetSettings"/>.
+    /// </summary>
+    CancelChargeOverride,
 }
 
-/// <param name="Name">Setting name, for <see cref="IpcCommand.SetSetting"/>.</param>
-/// <param name="Value">New value, for <see cref="IpcCommand.SetSetting"/>.</param>
+/// <param name="Name">Setting name for <see cref="IpcCommand.SetSetting"/>; charge mode id for the charge mode commands.</param>
+/// <param name="Value">
+/// New value for <see cref="IpcCommand.SetSetting"/>; the mode to switch back to for <see cref="IpcCommand.SetChargeOverride"/>.
+/// </param>
 /// <param name="BiosPassword">Only needed when a BIOS administrator password is set. Never logged or stored.</param>
-public sealed record IpcRequest(IpcCommand Command, string? Name = null, string? Value = null, string? BiosPassword = null)
+/// <param name="Until">When a <see cref="IpcCommand.SetChargeOverride"/> ends.</param>
+public sealed record IpcRequest(
+    IpcCommand Command, string? Name = null, string? Value = null, string? BiosPassword = null, DateTimeOffset? Until = null)
 {
     // Replaces the generated ToString so the password can't end up in a log.
     public override string ToString() => Name is null ? $"{Command}" : $"{Command} '{Name}'";
@@ -57,13 +76,27 @@ public sealed record ServiceStatus(
 /// <param name="Access">What the caller may do with this setting.</param>
 public sealed record SettingInfo(FirmwareSetting Setting, FirmwareChangeAccess Access);
 
+/// <summary>A charge mode chosen for a while, after which the service switches back by itself.</summary>
+/// <param name="ModeId">The mode on until <paramref name="Until"/>.</param>
+/// <param name="RestoreModeId">The mode the service switches to at <paramref name="Until"/>.</param>
+public sealed record ChargeOverride(string ModeId, string RestoreModeId, DateTimeOffset Until);
+
 /// <param name="ReportedChargeLimit">See <see cref="BatteryCharge"/>; null when Windows sees real battery readings.</param>
-public sealed record FirmwareSnapshot(IReadOnlyList<SettingInfo> Settings, double? ReportedChargeLimit);
+/// <param name="ChargeModes">Null when the firmware offers none Firmly knows, or the service predates them.</param>
+/// <param name="ChargeModeAccess">What the caller may do with <paramref name="ChargeModes"/>.</param>
+/// <param name="ChargeOverride">The charge mode chosen for a while, if any.</param>
+public sealed record FirmwareSnapshot(
+    IReadOnlyList<SettingInfo> Settings,
+    double? ReportedChargeLimit,
+    ChargeModes? ChargeModes = null,
+    FirmwareChangeAccess ChargeModeAccess = FirmwareChangeAccess.ReadOnly,
+    ChargeOverride? ChargeOverride = null);
 
 /// <summary>Carries the result for the command that was sent, or an <see cref="Error"/>.</summary>
 /// <param name="ReportedChargeLimit">
 /// With <see cref="Settings"/>: the charge limit at which the firmware rescales Windows' battery readings, if any.
 /// </param>
+/// <param name="ChargeModes">With <see cref="Settings"/>, as in <see cref="FirmwareSnapshot"/>, like the two after it.</param>
 public sealed record IpcResponse(
     IpcError Error = IpcError.None,
     string? Message = null,
@@ -71,7 +104,10 @@ public sealed record IpcResponse(
     IReadOnlyList<SettingInfo>? Settings = null,
     SettingInfo? Setting = null,
     uint? VendorCode = null,
-    double? ReportedChargeLimit = null)
+    double? ReportedChargeLimit = null,
+    ChargeModes? ChargeModes = null,
+    FirmwareChangeAccess? ChargeModeAccess = null,
+    ChargeOverride? ChargeOverride = null)
 {
     public static IpcResponse Fail(IpcError error, string message, uint? vendorCode = null) =>
         new(error, message, VendorCode: vendorCode);

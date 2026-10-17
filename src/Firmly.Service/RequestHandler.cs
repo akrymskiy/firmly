@@ -1,23 +1,35 @@
 using System.Collections.Concurrent;
 using System.Reflection;
+using System.Text.Json;
 
 using Firmly.Core;
 using Firmly.Ipc;
 
 namespace Firmly.Service;
 
-/// <summary>Turns pipe requests into gateway calls. Every firmware access goes through <see cref="FirmwareGateway"/>.</summary>
+/// <summary>
+/// Turns pipe requests into gateway calls, and switches a charge override back when it ends.
+/// Every firmware access goes through <see cref="FirmwareGateway"/>.
+/// </summary>
 /// <param name="requireAdminForAllChanges">Reads the machine lockdown policy; called on every request.</param>
+/// <param name="overrides">Where the charge override is kept across restarts.</param>
 internal sealed class RequestHandler(
     ILogger<RequestHandler> logger,
     FirmwareProviderResolver resolver,
     Func<bool> requireAdminForAllChanges,
-    TimeProvider time)
+    TimeProvider time,
+    ChargeOverrideStore overrides)
 {
     // Requests per account: the app makes two at start-up and a few a second at most while someone clicks around.
     // A UI bug once sent 37,000 requests in 90 seconds; the excess is refused before touching firmware.
     public const int RequestBurst = 30;
     public static readonly TimeSpan RequestInterval = TimeSpan.FromMilliseconds(200);
+
+    /// <summary>The longest a charge override may last.</summary>
+    public static readonly TimeSpan MaxOverride = TimeSpan.FromDays(31);
+
+    /// <summary>After a failed switch back, how long to wait before trying again.</summary>
+    public static readonly TimeSpan RevertRetryInterval = TimeSpan.FromMinutes(5);
 
     // Repeats of the same warning within this window are counted rather than logged.
     private static readonly TimeSpan WarningWindow = TimeSpan.FromMinutes(1);
@@ -29,14 +41,19 @@ internal sealed class RequestHandler(
     private static readonly string ServiceVersion =
         typeof(RequestHandler).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
 
-    private static readonly string[] Features = [IpcFeatures.Firmware];
+    private static readonly string[] Features = [IpcFeatures.Firmware, IpcFeatures.ChargeModes, IpcFeatures.ChargeOverride];
 
     // One firmware operation at a time, so a read can't interleave with another client's write and its read-back.
+    // Also guards the charge override.
     private readonly SemaphoreSlim _firmwareLock = new(1, 1);
     private readonly Lazy<IFirmwareProvider?> _provider = new(
         () => resolver.Resolve() is { } provider ? new WriteLimitedProvider(provider, time) : null);
     private readonly ConcurrentDictionary<string, TokenBucket> _requestBudgets = new(StringComparer.OrdinalIgnoreCase);
     private readonly LogThrottle _warnings = new(WarningWindow, time);
+
+    private StoredChargeOverride? _override;
+    private bool _overrideLoaded;
+    private DateTimeOffset _nextRevertAttempt;
 
     public void LogStartupStatus()
     {
@@ -78,14 +95,20 @@ internal sealed class RequestHandler(
         if (provider is null)
             return IpcResponse.Fail(IpcError.Unsupported, "This machine has no supported firmware interface.");
 
+        if (request.Name?.Length > MaxTextLength || request.Value?.Length > MaxTextLength)
+            return IpcResponse.Fail(IpcError.BadRequest, "The name or value is too long.");
+
         var gateway = new FirmwareGateway(provider, lockdown);
         await _firmwareLock.WaitAsync(ct);
         try
         {
             return request.Command switch
             {
-                IpcCommand.GetSettings => GetSettings(gateway, provider, caller),
+                IpcCommand.GetSettings => Snapshot(gateway, provider, caller),
                 IpcCommand.SetSetting => SetSetting(gateway, request, caller, callerName),
+                IpcCommand.SetChargeMode => SetChargeMode(gateway, provider, request, caller, callerName),
+                IpcCommand.SetChargeOverride => SetChargeOverride(gateway, provider, request, caller, callerName),
+                IpcCommand.CancelChargeOverride => CancelChargeOverride(gateway, provider, request, caller, callerName),
                 _ => IpcResponse.Fail(IpcError.BadRequest, $"Unknown command '{request.Command}'."),
             };
         }
@@ -105,50 +128,222 @@ internal sealed class RequestHandler(
         }
     }
 
-    private static IpcResponse GetSettings(FirmwareGateway gateway, IFirmwareProvider provider, FirmwareCaller caller)
+    /// <summary>
+    /// Switches a charge override back once it has ended, and forgets one whose mode was changed outside Firmly.
+    /// Called regularly by <see cref="ChargeOverrideWorker"/>; does nothing while there's no override.
+    /// </summary>
+    public async Task CheckChargeOverrideAsync(CancellationToken ct)
+    {
+        if (_provider.Value is not { } provider)
+            return;
+
+        await _firmwareLock.WaitAsync(ct);
+        try
+        {
+            if (Override is not { } current)
+                return;
+
+            // The service acts here, not a caller: the machine policy applied when the override was chosen.
+            var gateway = new FirmwareGateway(provider);
+            var modes = gateway.GetChargeModes();
+            if (modes?.CurrentId != current.ModeId)
+            {
+                logger.LogInformation("The charge mode was changed outside Firmly; the timed '{Mode}' is cancelled.", current.ModeId);
+                SaveOverride(null);
+                return;
+            }
+
+            var now = time.GetUtcNow();
+            if (now < current.Until || now < _nextRevertAttempt)
+                return;
+
+            if (modes.Find(current.RestoreModeId) is not { } restore)
+            {
+                logger.LogWarning("Can't switch back to '{Mode}': the firmware no longer offers it. Keeping '{Current}'.",
+                    current.RestoreModeId, current.ModeId);
+                SaveOverride(null);
+                return;
+            }
+
+            try
+            {
+                gateway.SetChargeMode(restore.Id, FirmwareCaller.Administrator);
+                SaveOverride(null);
+                logger.LogInformation("Switched the battery back to '{Mode}', as {User} asked.", restore.Label, current.SetBy);
+            }
+            catch (Exception ex) when (ex is FirmwarePolicyException or FirmwareWriteException or WriteLimitExceededException)
+            {
+                _nextRevertAttempt = now + RevertRetryInterval;
+                if (_warnings.ShouldLog("revert", out var repeats))
+                    logger.LogWarning("Couldn't switch the battery back to '{Mode}'; trying again in a few minutes: {Reason}{Repeats}",
+                        restore.Label, ex.Message, LogThrottle.Note(repeats));
+            }
+        }
+        finally
+        {
+            _firmwareLock.Release();
+        }
+    }
+
+    private IpcResponse Snapshot(FirmwareGateway gateway, IFirmwareProvider provider, FirmwareCaller caller)
     {
         var settings = gateway.GetSettings();
+        var modes = provider.GetChargeModes(settings);
         return new IpcResponse(
             Settings: [.. settings.Select(s => new SettingInfo(s, gateway.GetChangeAccess(s, caller)))],
-            ReportedChargeLimit: provider.GetReportedChargeLimit(settings));
+            ReportedChargeLimit: provider.GetReportedChargeLimit(settings),
+            ChargeModes: modes,
+            ChargeModeAccess: modes is null ? null : gateway.GetChargeModeAccess(modes, settings, caller),
+            ChargeOverride: Override?.ToIpc());
     }
 
     private IpcResponse SetSetting(FirmwareGateway gateway, IpcRequest request, FirmwareCaller caller, string callerName)
     {
         if (string.IsNullOrEmpty(request.Name) || request.Value is null)
             return IpcResponse.Fail(IpcError.BadRequest, "SetSetting needs a setting name and value.");
-        if (request.Name.Length > MaxTextLength || request.Value.Length > MaxTextLength)
-            return IpcResponse.Fail(IpcError.BadRequest, "The setting name or value is too long.");
 
-        try
+        return Change(callerName, request.Name, () =>
         {
             var updated = gateway.SetSetting(request.Name, request.Value, caller, request.BiosPassword);
             logger.LogInformation("{User} set '{Name}' to '{Value}'.", callerName, request.Name, updated.CurrentValue);
+            ForgetOverrideIfModeChanged(gateway, callerName);
             return new IpcResponse(Setting: new SettingInfo(updated, gateway.GetChangeAccess(updated, caller)));
+        });
+    }
+
+    private IpcResponse SetChargeMode(
+        FirmwareGateway gateway, IFirmwareProvider provider, IpcRequest request, FirmwareCaller caller, string callerName)
+    {
+        if (string.IsNullOrEmpty(request.Name))
+            return IpcResponse.Fail(IpcError.BadRequest, "SetChargeMode needs a charge mode.");
+
+        return Change(callerName, request.Name, () =>
+        {
+            var modes = gateway.SetChargeMode(request.Name, caller, request.BiosPassword);
+            logger.LogInformation("{User} chose the charge mode '{Mode}'.", callerName, modes.Current?.Label);
+            ForgetOverrideIfModeChanged(gateway, callerName);
+            return Snapshot(gateway, provider, caller);
+        });
+    }
+
+    private IpcResponse SetChargeOverride(
+        FirmwareGateway gateway, IFirmwareProvider provider, IpcRequest request, FirmwareCaller caller, string callerName)
+    {
+        if (string.IsNullOrEmpty(request.Name) || string.IsNullOrEmpty(request.Value) || request.Until is not { } until)
+            return IpcResponse.Fail(IpcError.BadRequest, "SetChargeOverride needs a charge mode, a mode to switch back to, and an end time.");
+        if (request.Name == request.Value)
+            return IpcResponse.Fail(IpcError.BadRequest, "The mode to switch back to must differ from the mode chosen for now.");
+
+        var now = time.GetUtcNow();
+        if (until <= now || until > now + MaxOverride)
+            return IpcResponse.Fail(IpcError.BadRequest, $"The end time must be in the next {MaxOverride.TotalDays:0} days.");
+
+        return Change(callerName, request.Name, () =>
+        {
+            if (gateway.GetChargeModes()?.Find(request.Value) is null)
+                throw new FirmwarePolicyException($"'{request.Value}' is not a charge mode on this device.");
+
+            var modes = gateway.SetChargeMode(request.Name, caller, request.BiosPassword);
+            SaveOverride(new StoredChargeOverride(request.Name, request.Value, until, callerName));
+            _nextRevertAttempt = default;
+            logger.LogInformation("{User} chose '{Mode}' until {Until:u}, then '{Restore}'.",
+                callerName, modes.Current?.Label, until, modes.Find(request.Value)?.Label);
+            return Snapshot(gateway, provider, caller);
+        });
+    }
+
+    private IpcResponse CancelChargeOverride(
+        FirmwareGateway gateway, IFirmwareProvider provider, IpcRequest request, FirmwareCaller caller, string callerName)
+    {
+        if (Override is not { } current)
+            return Snapshot(gateway, provider, caller);
+
+        return Change(callerName, current.RestoreModeId, () =>
+        {
+            if (gateway.GetChargeModes()?.Find(current.RestoreModeId) is not null)
+                gateway.SetChargeMode(current.RestoreModeId, caller, request.BiosPassword);
+            SaveOverride(null);
+            logger.LogInformation("{User} ended the timed '{Mode}' early.", callerName, current.ModeId);
+            return Snapshot(gateway, provider, caller);
+        });
+    }
+
+    // A charge override only lasts while its mode is on: choosing another mode, by any route, ends it.
+    private void ForgetOverrideIfModeChanged(FirmwareGateway gateway, string callerName)
+    {
+        if (Override is { } current && gateway.GetChargeModes()?.CurrentId != current.ModeId)
+        {
+            logger.LogInformation("{User} changed the charge mode; the timed '{Mode}' is cancelled.", callerName, current.ModeId);
+            SaveOverride(null);
+        }
+    }
+
+    /// <summary>Runs a change, turning refusals into error responses.</summary>
+    /// <param name="what">The setting or mode being changed, for the log.</param>
+    private IpcResponse Change(string callerName, string what, Func<IpcResponse> change)
+    {
+        try
+        {
+            return change();
         }
         catch (FirmwareAccessDeniedException ex)
         {
-            WarnRefused(callerName, request.Name, ex.Message);
+            WarnRefused(callerName, what, ex.Message);
             return IpcResponse.Fail(IpcError.AdministratorRequired, ex.Message);
         }
         catch (FirmwarePolicyException ex)
         {
-            WarnRefused(callerName, request.Name, ex.Message);
+            WarnRefused(callerName, what, ex.Message);
             return IpcResponse.Fail(IpcError.NotAllowed, ex.Message);
         }
         catch (WriteLimitExceededException ex)
         {
             if (_warnings.ShouldLog("write-limit", out var repeats))
-                logger.LogWarning("Refused to write '{Name}' for {User}: firmware was written too often recently.{Repeats}",
-                    request.Name, callerName, LogThrottle.Note(repeats));
+                logger.LogWarning("Refused to change '{Name}' for {User}: firmware was written too often recently.{Repeats}",
+                    what, callerName, LogThrottle.Note(repeats));
             return TooManyRequests("Too many firmware changes in a short time", ex.RetryAfter);
         }
         catch (FirmwareWriteException ex)
         {
-            if (_warnings.ShouldLog($"rejected|{callerName}|{request.Name}", out var repeats))
+            if (_warnings.ShouldLog($"rejected|{callerName}|{what}", out var repeats))
                 logger.LogWarning("Firmware rejected '{Name}' from {User}: {Reason}{Repeats}",
-                    request.Name, callerName, ex.Message, LogThrottle.Note(repeats));
+                    what, callerName, ex.Message, LogThrottle.Note(repeats));
             return IpcResponse.Fail(IpcError.FirmwareRejected, ex.Message, ex.VendorCode);
+        }
+    }
+
+    // Loaded on first use; only touched under _firmwareLock.
+    private StoredChargeOverride? Override
+    {
+        get
+        {
+            if (!_overrideLoaded)
+            {
+                _overrideLoaded = true;
+                try
+                {
+                    _override = overrides.Load();
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+                {
+                    logger.LogError(ex, "Couldn't read the saved charge override; ignoring it.");
+                }
+            }
+            return _override;
+        }
+    }
+
+    private void SaveOverride(StoredChargeOverride? value)
+    {
+        _override = value;
+        _overrideLoaded = true;
+        try
+        {
+            overrides.Save(value);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            logger.LogError(ex, "Couldn't save the charge override; a restart of the service would lose it.");
         }
     }
 

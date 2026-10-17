@@ -78,12 +78,20 @@ public sealed class HpBiosProvider : IFirmwareProvider
             throw new FirmwareWriteException($"HP BIOS rejected '{name}': {DescribeStatus(status)}", status);
     }
 
+    // Battery Health Manager's values, as HP's BIOS and documentation name them.
+    private static readonly EnumerationChargeModes BatteryHealthManager = new("Battery Health Manager",
+    [
+        new("Let HP Manage My Battery Health", "hp-let-hp-manage", ChargeModeKind.Adaptive),
+        new("Maximize Battery Health Management", "hp-maximize", ChargeModeKind.Limited, LimitPercent: 80),
+        new("Minimize Battery Health Management", "hp-minimize", ChargeModeKind.Full),
+    ]);
+
+    public ChargeModes? GetChargeModes(IReadOnlyList<FirmwareSetting> settings) => BatteryHealthManager.From(settings);
+
     // Measured: with Maximize, full-charge capacity is reported as exactly 80% of the real one.
     // Let HP Manage and Minimize report real readings.
     public double? GetReportedChargeLimit(IReadOnlyList<FirmwareSetting> settings) =>
-        settings.Any(s => s.Name == "Battery Health Manager" && s.CurrentValue == "Maximize Battery Health Management")
-            ? 0.8
-            : null;
+        GetChargeModes(settings)?.Current is { Kind: ChargeModeKind.Limited, LimitPercent: { } limit } ? limit / 100.0 : null;
 
     private static FirmwareSetting? ToSetting(ManagementBaseObject obj)
     {

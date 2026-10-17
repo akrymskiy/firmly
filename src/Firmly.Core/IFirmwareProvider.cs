@@ -22,6 +22,12 @@ public interface IFirmwareProvider
     void SetSetting(string name, string value, string? biosPassword);
 
     /// <summary>
+    /// The charge modes the firmware offers (see <see cref="ChargeMode"/>), worked out from <paramref name="settings"/>;
+    /// null when it offers none Firmly knows.
+    /// </summary>
+    ChargeModes? GetChargeModes(IReadOnlyList<FirmwareSetting> settings);
+
+    /// <summary>
     /// The charge limit (e.g. 0.8) at which the firmware rescales the battery readings Windows shows, given the
     /// current settings; null when Windows sees real readings. See <see cref="BatteryCharge"/>.
     /// </summary>
