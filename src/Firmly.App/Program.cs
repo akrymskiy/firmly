@@ -26,14 +26,18 @@ public static class Program
     // One Firmly per user: launching it again (from Start, or a second sign-in start) shows the running copy.
     private static bool RedirectToRunningInstance()
     {
-        var activation = AppInstance.GetCurrent().GetActivatedEventArgs();
         var main = AppInstance.FindOrRegisterForKey("main");
         if (main.IsCurrent)
         {
             main.Activated += (_, _) => App.DispatcherQueue?.TryEnqueue(App.ShowMainWindow);
+            // Before anything reads the activation: when a notification click starts Firmly, the Windows App SDK fails
+            // fast in GetActivatedEventArgs unless the notification COM class is registered by then.
+            Notifications.Register();
             return false;
         }
 
+        // Not started by a notification click: those go to the running copy's COM class.
+        var activation = AppInstance.GetCurrent().GetActivatedEventArgs();
         // Redirect from another thread: blocking this UI (STA) thread on it can deadlock.
         Task.Run(() => main.RedirectActivationToAsync(activation).AsTask()).Wait();
         return true;

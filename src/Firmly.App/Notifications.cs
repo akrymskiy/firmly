@@ -16,15 +16,19 @@ internal static class Notifications
 
     private static bool s_registered;
 
-    /// <summary>Call once at start-up, on the UI thread, before showing any.</summary>
+    /// <summary>
+    /// Call once at start-up, before anything reads the activation (<c>AppInstance.GetActivatedEventArgs</c>), and
+    /// before showing any.
+    /// </summary>
     public static void Register()
     {
         try
         {
             if (!AppNotificationManager.IsSupported())
                 return;
+            // A click that starts Firmly arrives with the activation instead, so there's a window by the time any comes here.
             AppNotificationManager.Default.NotificationInvoked += (_, args) =>
-                App.DispatcherQueue.TryEnqueue(() => Handle(args.Arguments));
+                App.DispatcherQueue?.TryEnqueue(() => Handle(args.Arguments));
             AppNotificationManager.Default.Register();
             s_registered = true;
         }
@@ -43,14 +47,17 @@ internal static class Notifications
         s_registered = false;
     }
 
-    /// <param name="action">With <paramref name="button"/>: what the button does, e.g. <see cref="SwitchBackAction"/>.</param>
+    /// <param name="action">
+    /// With <paramref name="button"/>: what the button does, e.g. <see cref="SwitchBackAction"/>. Clicking the notification
+    /// itself does the same: it's what the notification is for.
+    /// </param>
     public static void Show(string title, string text, string? button = null, string? action = null)
     {
         if (!s_registered)
             return;
         var builder = new AppNotificationBuilder().AddText(title).AddText(text);
         if (button is not null && action is not null)
-            builder.AddButton(new AppNotificationButton(button).AddArgument(ActionKey, action));
+            builder.AddArgument(ActionKey, action).AddButton(new AppNotificationButton(button).AddArgument(ActionKey, action));
         try
         {
             AppNotificationManager.Default.Show(builder.BuildNotification());
@@ -61,15 +68,11 @@ internal static class Notifications
         }
     }
 
-    /// <summary>Acts on a click: the notification itself opens Firmly; a button does what it says.</summary>
+    /// <summary>Acts on a click: opens Firmly on the Battery page, which all its notifications are about, then does the action.</summary>
     public static void Handle(IDictionary<string, string> arguments)
     {
+        App.ShowBattery();
         if (arguments.TryGetValue(ActionKey, out var action) && action == SwitchBackAction)
-        {
-            App.ShowMainWindow();
             App.Session.Charge.SwitchBackNowCommand.Execute(null);
-            return;
-        }
-        App.ShowMainWindow();
     }
 }

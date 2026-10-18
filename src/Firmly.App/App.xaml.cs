@@ -86,7 +86,6 @@ public partial class App : Application
 
         Session.Passwords.Source = new BiosPasswordSource(Session.Passwords);
 
-        Notifications.Register();
         Session.Charge.OverrideEnded += mode =>
             Notifications.Show(Text.Get("Charge_EndedTitle"), Text.Format("Notify_EndedText", mode));
         Session.Charge.SwitchBackNeedsPassword += mode =>
