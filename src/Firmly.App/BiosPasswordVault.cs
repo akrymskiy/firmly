@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Runtime.Versioning;
 using System.Security.Cryptography;
 using System.Text;
 using Windows.Security.Credentials;
@@ -21,6 +22,11 @@ internal static class BiosPasswordVault
     private const string SettingName = "BiosPasswordVault";
     private static readonly byte[] Purpose = "Firmly BIOS password key"u8.ToArray();
     private const int SaltSize = 32, NonceSize = 12, TagSize = 16;
+
+    // Windows 11 24H2 and later can tie the Windows Hello prompt to Firmly's window. Without that, a desktop app's prompt
+    // opens behind its window, and Windows then refuses the result (WINBIO_E_INVALID_TICKET), so nothing gets saved.
+    [SupportedOSPlatformGuard("windows10.0.26100.0")]
+    private static readonly bool CanUseWindow = OperatingSystem.IsWindowsVersionAtLeast(10, 0, 26100);
 
     private static Windows.Foundation.Collections.IPropertySet Values =>
         Windows.Storage.ApplicationData.Current.LocalSettings.Values;
@@ -51,7 +57,9 @@ internal static class BiosPasswordVault
     {
         try
         {
-            var created = await KeyCredentialManager.RequestCreateAsync(KeyName, KeyCredentialCreationOption.ReplaceExisting);
+            var created = CanUseWindow
+                ? await KeyCredentialManager.RequestCreateForWindowAsync(OwnerWindow(), KeyName, KeyCredentialCreationOption.ReplaceExisting)
+                : await KeyCredentialManager.RequestCreateAsync(KeyName, KeyCredentialCreationOption.ReplaceExisting);
             if (created.Status != KeyCredentialStatus.Success)
                 return false;
 
@@ -145,7 +153,9 @@ internal static class BiosPasswordVault
     // The signature over the salt, run through HKDF: an AES key that only this user's Windows Hello can produce.
     private static async Task<byte[]?> DeriveKeyAsync(KeyCredential credential, byte[] salt)
     {
-        var signed = await credential.RequestSignAsync(salt.AsBuffer());
+        var signed = CanUseWindow
+            ? await credential.RequestSignForWindowAsync(OwnerWindow(), salt.AsBuffer())
+            : await credential.RequestSignAsync(salt.AsBuffer());
         if (signed.Status != KeyCredentialStatus.Success)
             return null;
 
@@ -153,5 +163,13 @@ internal static class BiosPasswordVault
         var key = HKDF.DeriveKey(HashAlgorithmName.SHA256, signature, 32, salt, Purpose);
         CryptographicOperations.ZeroMemory(signature);
         return key;
+    }
+
+    // The main window, shown so the prompt has a visible window to sit on: a change may come from the tray flyout.
+    [SupportedOSPlatform("windows10.0.26100.0")]
+    private static Windows.UI.WindowId OwnerWindow()
+    {
+        App.ShowMainWindow();
+        return new(App.Window.AppWindow.Id.Value);
     }
 }
