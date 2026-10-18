@@ -36,6 +36,7 @@
                 <InfoBar
                     Margin="0,12,0,0"
                     IsOpen="{x:Bind Session.Charge.HasOverride, Mode=OneWay}"
+                    Visibility="{x:Bind Session.Charge.HasOverride, Mode=OneWay}"
                     IsClosable="False"
                     Severity="{x:Bind Session.Charge.OverrideSeverity, Mode=OneWay}"
                     Title="{x:Bind Session.Charge.OverrideTitle, Mode=OneWay}"
@@ -52,6 +53,7 @@
                     x:Uid="Flyout_EndNote"
                     Margin="0,12,0,0"
                     IsOpen="{x:Bind Session.Charge.HasEndNote, Mode=OneWay}"
+                    Visibility="{x:Bind Session.Charge.HasEndNote, Mode=OneWay}"
                     Severity="{x:Bind Session.Charge.EndNoteSeverity, Mode=OneWay}"
                     Message="{x:Bind Session.Charge.EndNoteMessage, Mode=OneWay}"
                     CloseButtonCommand="{x:Bind Session.Charge.DismissEndNoteCommand}" />
