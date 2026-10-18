@@ -2,13 +2,22 @@
 
 A lightweight, open-source power and firmware settings app for Windows business notebooks — a small alternative to bulky vendor utilities.
 
-> **Status:** early development. Not yet usable.
+> **Status:** preview. Test builds are on the [Releases](https://github.com/akrymskiy/firmly/releases) page; a Microsoft Store release is in the works.
 
-## Planned features
+## Features
 
-- Battery charge management (e.g. HP Battery Health Manager) from a tray app
-- Curated view of other BIOS/UEFI settings
-- Support for HP business notebooks first (EliteBook, ProBook, ZBook), other vendors later
+For HP business notebooks (EliteBook, ProBook, ZBook, Dragonfly and similar):
+
+- Battery charge modes (HP Battery Health Manager) from the notification area, with the battery's real charge when HP limits charging to 80%
+- [Timed full charge](docs/timed-full-charge.md): 100% for a while, then back to your usual mode by itself
+- Works with a BIOS administrator password, which it can keep, unlocked with Windows Hello
+- A curated view of other BIOS settings
+
+## Plans
+
+- Other brands' business notebooks, such as Lenovo ThinkPad and Dell Latitude
+- More HP settings and device controls
+- Translations
 
 ## Using Firmly
 

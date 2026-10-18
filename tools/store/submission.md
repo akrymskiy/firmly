@@ -57,13 +57,15 @@ Answer the questionnaire as a **utility** app. It has no violence, sexual conten
 >
 > Firmly collects no data and shows no ads. The source code is at github.com/akrymskiy/firmly.
 >
+> Firmly currently supports HP business notebooks. Support for other brands may follow. Follow the project on GitHub.
+>
 > Firmly is an independent project, not affiliated with or endorsed by HP Inc. HP, EliteBook, ProBook, ZBook and Dragonfly are trademarks of HP Inc.
 
 **Product features** (one per line in Partner Center):
 
-- Choose the battery charge mode: HP-managed, stop at 80%, or charge fully
+- Choose the battery charge mode: managed, stop at 80%, or charge fully
 - Charge to 100% for a while, then switch back automatically
-- Shows the real battery charge when HP limits charging
+- Shows the real battery charge when charging is limited
 - Battery icon and quick panel in the notification area
 - Works with a BIOS administrator password, with Windows Hello
 - Free and open source, with no data collection
