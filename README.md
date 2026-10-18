@@ -10,6 +10,10 @@ A lightweight, open-source power and firmware settings app for Windows business 
 - Curated view of other BIOS/UEFI settings
 - Support for HP business notebooks first (EliteBook, ProBook, ZBook), other vendors later
 
+## Using Firmly
+
+- [Timed full charge](docs/timed-full-charge.md): charging to 100% for a while, and what happens when the time is up, with or without a BIOS password
+
 ## How it works
 
 Vendor firmware settings are exposed through WMI, which requires administrator rights even to read. Firmly is split in two:
