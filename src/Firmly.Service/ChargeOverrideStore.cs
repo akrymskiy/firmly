@@ -1,5 +1,3 @@
-using System.Security.AccessControl;
-using System.Security.Principal;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Firmly.Ipc;
@@ -21,18 +19,11 @@ internal sealed record StoredChargeOverride(
 }
 
 /// <summary>Keeps the charge override in a file, so the switch back still happens after a restart or reboot.</summary>
-/// <param name="requireTrustedFolder">
-/// Standard users can create folders under ProgramData. When true, the folder must be one only SYSTEM and
-/// administrators control, so a user can't plant the file or redirect the service's writes through a link.
-/// </param>
+/// <param name="requireTrustedFolder">See <see cref="TrustedFolder"/>; false for tests.</param>
 internal sealed class ChargeOverrideStore(string path, bool requireTrustedFolder = true)
 {
     /// <summary>%ProgramData%\Firmly\charge-override.json.</summary>
-    public static string DefaultPath { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Firmly", "charge-override.json");
-
-    private static readonly SecurityIdentifier LocalSystem = new(WellKnownSidType.LocalSystemSid, null);
-    private static readonly SecurityIdentifier Administrators = new(WellKnownSidType.BuiltinAdministratorsSid, null);
+    public static string DefaultPath { get; } = Path.Combine(TrustedFolder.DefaultPath, "charge-override.json");
 
     /// <returns>Null when no override is stored.</returns>
     /// <exception cref="IOException">The file can't be read, or isn't safe to trust.</exception>
@@ -42,7 +33,7 @@ internal sealed class ChargeOverrideStore(string path, bool requireTrustedFolder
         if (!File.Exists(path))
             return null;
 
-        EnsureTrusted(new DirectoryInfo(Folder));
+        TrustedFolder.EnsureTrusted(path, requireTrustedFolder);
         return JsonSerializer.Deserialize(File.ReadAllBytes(path), StoreJsonContext.Default.StoredChargeOverride);
     }
 
@@ -50,10 +41,7 @@ internal sealed class ChargeOverrideStore(string path, bool requireTrustedFolder
     /// <exception cref="IOException">The file can't be written, or the folder isn't safe to trust.</exception>
     public void Save(StoredChargeOverride? value)
     {
-        var folder = new DirectoryInfo(Folder);
-        if (!folder.Exists)
-            CreateFolder(folder);
-        EnsureTrusted(folder);
+        TrustedFolder.Prepare(path, requireTrustedFolder);
 
         if (value is null)
         {
@@ -61,48 +49,13 @@ internal sealed class ChargeOverrideStore(string path, bool requireTrustedFolder
             return;
         }
 
-        // Write a copy and swap it in, so a crash can't leave half a file.
-        var temp = path + ".tmp";
-        File.WriteAllBytes(temp, JsonSerializer.SerializeToUtf8Bytes(value, StoreJsonContext.Default.StoredChargeOverride));
-        File.Move(temp, path, overwrite: true);
-    }
-
-    private string Folder => Path.GetDirectoryName(path)!;
-
-    private void CreateFolder(DirectoryInfo folder)
-    {
-        if (!requireTrustedFolder)
-        {
-            folder.Create();
-            return;
-        }
-
-        // Only SYSTEM and administrators, and nothing inherited from ProgramData (where users may create files).
-        var security = new DirectorySecurity();
-        security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
-        security.SetOwner(Administrators);
-        foreach (var sid in new[] { LocalSystem, Administrators })
-            security.AddAccessRule(new FileSystemAccessRule(sid, FileSystemRights.FullControl,
-                InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, AccessControlType.Allow));
-        folder.Create(security);
-    }
-
-    private void EnsureTrusted(DirectoryInfo folder)
-    {
-        if (!requireTrustedFolder)
-            return;
-
-        if (folder.Attributes.HasFlag(FileAttributes.ReparsePoint))
-            throw new IOException($"'{folder.FullName}' is a link; refusing to use it.");
-
-        var owner = folder.GetAccessControl().GetOwner(typeof(SecurityIdentifier));
-        if (owner != LocalSystem && owner != Administrators)
-            throw new IOException($"'{folder.FullName}' is owned by {owner}, not SYSTEM or Administrators; refusing to use it.");
+        TrustedFolder.WriteAtomically(path, JsonSerializer.SerializeToUtf8Bytes(value, StoreJsonContext.Default.StoredChargeOverride));
     }
 }
 
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, WriteIndented = true)]
 [JsonSerializable(typeof(StoredChargeOverride))]
+[JsonSerializable(typeof(StoredPasswordFailures))]
 internal sealed partial class StoreJsonContext : JsonSerializerContext
 {
 }

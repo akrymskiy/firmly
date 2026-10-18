@@ -128,6 +128,7 @@ public partial class SessionViewModel : ObservableObject
     private void Show(FirmwareSnapshot snapshot)
     {
         BiosPasswordSet = Passwords.IsSet = snapshot.BiosPasswordSet;
+        Passwords.TriesLeft = snapshot.BiosPasswordTriesLeft;
         Battery.SetReportedChargeLimit(snapshot.ReportedChargeLimit);
         Charge.Update(snapshot, _supportsOverride);
 

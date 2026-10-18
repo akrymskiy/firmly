@@ -32,4 +32,9 @@ public static class IpcFeatures
     /// with every change, including keeping it for a charge override (<see cref="IpcRequest.KeepBiosPassword"/>).
     /// </summary>
     public const string BiosPassword = "biosPassword";
+
+    /// <summary>
+    /// <see cref="IpcResponse.BiosPasswordTriesLeft"/>, for firmware whose lockout after wrong passwords Firmly knows.
+    /// </summary>
+    public const string BiosPasswordLockout = "biosPasswordLockout";
 }

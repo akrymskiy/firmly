@@ -10,20 +10,21 @@ internal sealed class BiosPasswordSource(BiosPasswordGate gate) : IBiosPasswordS
     // One prompt at a time: a window can show only one ContentDialog.
     private readonly SemaphoreSlim _prompt = new(1, 1);
 
-    public async Task<BiosPasswordAnswer?> GetAsync(BiosPasswordAnswer? rejected)
+    public async Task<BiosPasswordAnswer?> GetAsync(BiosPasswordAnswer? rejected, int? triesLeft)
     {
         // The saved one is out of date, e.g. the password was changed in the BIOS setup.
         if (rejected is { FromVault: true })
             await BiosPasswordVault.ForgetAsync();
 
-        if (rejected is null && gate.AllowSaved && BiosPasswordVault.HasSaved
+        // Not on the last try: a saved password that's out of date would lock the BIOS without the user typing anything.
+        if (rejected is null && triesLeft is (null or > 1) && gate.AllowSaved && BiosPasswordVault.HasSaved
             && await BiosPasswordVault.UnlockAsync() is { } saved)
             return new(saved, FromVault: true);
 
         await _prompt.WaitAsync();
         try
         {
-            return await AskAsync(rejected is not null);
+            return await AskAsync(rejected is not null, triesLeft);
         }
         finally
         {
@@ -37,7 +38,7 @@ internal sealed class BiosPasswordSource(BiosPasswordGate gate) : IBiosPasswordS
             await BiosPasswordVault.SaveAsync(answer.Password);
     }
 
-    private async Task<BiosPasswordAnswer?> AskAsync(bool rejected)
+    private async Task<BiosPasswordAnswer?> AskAsync(bool rejected, int? triesLeft)
     {
         App.ShowMainWindow();
         var root = await App.GetXamlRootAsync();
@@ -55,15 +56,12 @@ internal sealed class BiosPasswordSource(BiosPasswordGate gate) : IBiosPasswordS
             Text = Text.Get("Password_Explanation"),
             TextWrapping = TextWrapping.Wrap,
         });
-        if (rejected)
-            panel.Children.Add(new InfoBar
-            {
-                IsOpen = true,
-                IsClosable = false,
-                Severity = InfoBarSeverity.Warning,
-                Title = Text.Get("Password_RejectedTitle"),
-                Message = Text.Get("Password_RejectedMessage"),
-            });
+        if (triesLeft == 1)
+            panel.Children.Add(Warning(Text.Get("Password_LastTryTitle"), Text.Get("Password_LastTryMessage")));
+        else if (rejected)
+            panel.Children.Add(Warning(Text.Get("Password_RejectedTitle"), triesLeft is { } left
+                ? Text.Format("Password_RejectedTriesLeftMessage", left)
+                : Text.Get("Password_RejectedMessage")));
         panel.Children.Add(password);
         panel.Children.Add(remember);
 
@@ -86,4 +84,13 @@ internal sealed class BiosPasswordSource(BiosPasswordGate gate) : IBiosPasswordS
             ? new(password.Password, remember.IsChecked == true)
             : null;
     }
+
+    private static InfoBar Warning(string title, string message) => new()
+    {
+        IsOpen = true,
+        IsClosable = false,
+        Severity = InfoBarSeverity.Warning,
+        Title = title,
+        Message = message,
+    };
 }

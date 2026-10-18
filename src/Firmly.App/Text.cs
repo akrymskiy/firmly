@@ -39,6 +39,7 @@ internal static class Text
         IpcError.ServiceUnavailable => Get("Error_ServiceUnavailable"),
         IpcError.IncompatibleService => Get("Error_IncompatibleService"),
         IpcError.AdministratorRequired => Get("Error_AdministratorRequired"),
+        IpcError.BiosPasswordRequired when ex.IsBiosPasswordLocked => Get("Error_BiosPasswordLocked"),
         IpcError.BiosPasswordRequired => Get("Error_BiosPasswordRequired"),
         IpcError.Unsupported => Get("Error_Unsupported"),
         _ => ex.Message,

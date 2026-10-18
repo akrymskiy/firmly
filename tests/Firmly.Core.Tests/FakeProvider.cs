@@ -25,6 +25,8 @@ internal sealed class FakeProvider(
     /// <summary>A BIOS administrator password: when set, writes need it.</summary>
     public string? BiosPassword { get; set; }
 
+    public BiosPasswordLockout? PasswordLockout { get; set; }
+
     public bool IsSupported() => supported;
 
     public bool IsBiosPasswordSet() => BiosPassword is not null;

@@ -61,7 +61,8 @@ public sealed class FirmlyClient
             response.ChargeModes,
             response.ChargeModeAccess ?? FirmwareChangeAccess.ReadOnly,
             response.ChargeOverride,
-            response.BiosPasswordSet);
+            response.BiosPasswordSet,
+            response.BiosPasswordTriesLeft);
     }
 
     /// <returns>The setting as read back from firmware after the change.</returns>
@@ -84,7 +85,10 @@ public sealed class FirmlyClient
             await IpcProtocol.WriteRequestAsync(pipe, request, timeout.Token);
             var response = await IpcProtocol.ReadResponseAsync(pipe, timeout.Token);
             if (response.Error != IpcError.None)
-                throw new FirmlyServiceException(response.Error, response.Message ?? response.Error.ToString(), response.VendorCode);
+                throw new FirmlyServiceException(response.Error, response.Message ?? response.Error.ToString(), response.VendorCode)
+                {
+                    BiosPasswordTriesLeft = response.BiosPasswordTriesLeft,
+                };
             return response;
         }
         catch (Exception ex) when (ex is TimeoutException or IOException or UnauthorizedAccessException or InvalidDataException
@@ -118,4 +122,10 @@ public sealed class FirmlyServiceException(IpcError error, string message, uint?
 
     /// <summary>Raw firmware status code when <see cref="Error"/> is <see cref="IpcError.FirmwareRejected"/>.</summary>
     public uint? VendorCode { get; } = vendorCode;
+
+    /// <summary>With <see cref="IpcError.BiosPasswordRequired"/>: see <see cref="IpcResponse.BiosPasswordTriesLeft"/>.</summary>
+    public int? BiosPasswordTriesLeft { get; init; }
+
+    /// <summary>The BIOS refuses changes until the PC restarts, after too many wrong passwords.</summary>
+    public bool IsBiosPasswordLocked => Error == IpcError.BiosPasswordRequired && BiosPasswordTriesLeft == 0;
 }

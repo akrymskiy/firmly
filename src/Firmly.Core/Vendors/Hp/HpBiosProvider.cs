@@ -99,6 +99,11 @@ public sealed class HpBiosProvider : IFirmwareProvider
         }
     });
 
+    // Measured on an EliteBook X Flip G2i (BIOS 01.02.02): the third wrong password in a row locks SetBIOSSetting until
+    // a restart, after which even the right one gets status 6. One or two wrong ones followed by the right one are fine,
+    // and a success starts the count over. Changes sent without a password count too.
+    public BiosPasswordLockout PasswordLockout { get; } = new(MaxConsecutiveFailures: 3);
+
     // Battery Health Manager's values, as HP's BIOS and documentation name them.
     private static readonly EnumerationChargeModes BatteryHealthManager = new("Battery Health Manager",
     [

@@ -33,6 +33,8 @@ internal sealed class WriteLimitedProvider(IFirmwareProvider inner, TimeProvider
 
     public bool IsBiosPasswordSet() => inner.IsBiosPasswordSet();
 
+    public BiosPasswordLockout? PasswordLockout => inner.PasswordLockout;
+
     public ChargeModes? GetChargeModes(IReadOnlyList<FirmwareSetting> settings) => inner.GetChargeModes(settings);
 
     public double? GetReportedChargeLimit(IReadOnlyList<FirmwareSetting> settings) => inner.GetReportedChargeLimit(settings);

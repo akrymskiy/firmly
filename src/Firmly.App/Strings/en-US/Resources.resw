@@ -317,6 +317,9 @@
   <data name="Error_AdministratorRequired">
     <value>Only administrators can make this change on this PC.</value>
   </data>
+  <data name="Error_BiosPasswordLocked">
+    <value>The BIOS refuses changes after too many wrong passwords. Restart the PC to try again.</value>
+  </data>
   <data name="Error_BiosPasswordRequired">
     <value>The BIOS administrator password is missing or wrong.</value>
   </data>
@@ -347,11 +350,20 @@
   <data name="Password_Header">
     <value>Password</value>
   </data>
+  <data name="Password_LastTryMessage">
+    <value>One more wrong password and the BIOS will refuse changes until the PC restarts.</value>
+  </data>
+  <data name="Password_LastTryTitle">
+    <value>Last try</value>
+  </data>
   <data name="Password_RejectedMessage">
     <value>Check it and try again. After several wrong tries, a BIOS may refuse changes until the PC restarts.</value>
   </data>
   <data name="Password_RejectedTitle">
     <value>The BIOS didn't accept the password.</value>
+  </data>
+  <data name="Password_RejectedTriesLeftMessage">
+    <value>Check it and try again. After {0} more wrong passwords, the BIOS will refuse changes until the PC restarts.</value>
   </data>
   <data name="Password_Remember">
     <value>Remember it on this PC, unlocked with Windows Hello</value>

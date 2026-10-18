@@ -68,7 +68,10 @@ public enum IpcError
     ServiceUnavailable,
     /// <summary>Client side only: the service speaks a different <see cref="IpcConstants.ProtocolVersion"/>.</summary>
     IncompatibleService,
-    /// <summary>The BIOS administrator password was missing or wrong.</summary>
+    /// <summary>
+    /// The BIOS administrator password was missing or wrong; or, with <see cref="IpcResponse.BiosPasswordTriesLeft"/> 0,
+    /// the BIOS refuses changes until the PC restarts after too many wrong ones, and the service didn't send it this one.
+    /// </summary>
     BiosPasswordRequired,
 }
 
@@ -108,19 +111,26 @@ public sealed record ChargeOverride(
 /// <param name="ChargeModeAccess">What the caller may do with <paramref name="ChargeModes"/>.</param>
 /// <param name="ChargeOverride">The charge mode chosen for a while, if any.</param>
 /// <param name="BiosPasswordSet">A BIOS administrator password is set, so changes need it.</param>
+/// <param name="BiosPasswordTriesLeft">See <see cref="IpcResponse.BiosPasswordTriesLeft"/>.</param>
 public sealed record FirmwareSnapshot(
     IReadOnlyList<SettingInfo> Settings,
     double? ReportedChargeLimit,
     ChargeModes? ChargeModes = null,
     FirmwareChangeAccess ChargeModeAccess = FirmwareChangeAccess.ReadOnly,
     ChargeOverride? ChargeOverride = null,
-    bool BiosPasswordSet = false);
+    bool BiosPasswordSet = false,
+    int? BiosPasswordTriesLeft = null);
 
 /// <summary>Carries the result for the command that was sent, or an <see cref="Error"/>.</summary>
 /// <param name="ReportedChargeLimit">
 /// With <see cref="Settings"/>: the charge limit at which the firmware rescales Windows' battery readings, if any.
 /// </param>
-/// <param name="ChargeModes">With <see cref="Settings"/>, as in <see cref="FirmwareSnapshot"/>, like the two after it.</param>
+/// <param name="ChargeModes">With <see cref="Settings"/>, as in <see cref="FirmwareSnapshot"/>, like the three after it.</param>
+/// <param name="BiosPasswordTriesLeft">
+/// How many more wrong BIOS passwords in a row the firmware takes before it refuses changes until the PC restarts; 0 once
+/// it does. Null when the service doesn't know how this firmware locks. Sent with settings and with
+/// <see cref="IpcError.BiosPasswordRequired"/>.
+/// </param>
 public sealed record IpcResponse(
     IpcError Error = IpcError.None,
     string? Message = null,
@@ -132,7 +142,8 @@ public sealed record IpcResponse(
     ChargeModes? ChargeModes = null,
     FirmwareChangeAccess? ChargeModeAccess = null,
     ChargeOverride? ChargeOverride = null,
-    bool BiosPasswordSet = false)
+    bool BiosPasswordSet = false,
+    int? BiosPasswordTriesLeft = null)
 {
     public static IpcResponse Fail(IpcError error, string message, uint? vendorCode = null) =>
         new(error, message, VendorCode: vendorCode);

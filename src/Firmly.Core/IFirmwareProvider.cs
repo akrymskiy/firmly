@@ -27,6 +27,12 @@ public interface IFirmwareProvider
     bool IsBiosPasswordSet();
 
     /// <summary>
+    /// How this firmware locks out wrong BIOS passwords, as measured on its hardware; null when Firmly doesn't know,
+    /// and then doesn't count them.
+    /// </summary>
+    BiosPasswordLockout? PasswordLockout { get; }
+
+    /// <summary>
     /// The charge modes the firmware offers (see <see cref="ChargeMode"/>), worked out from <paramref name="settings"/>;
     /// null when it offers none Firmly knows.
     /// </summary>

@@ -16,6 +16,7 @@ namespace Firmly.Service;
 /// <param name="overrides">Where the charge override is kept across restarts.</param>
 /// <param name="passwords">Encrypts a BIOS password kept to switch back with; DPAPI by default.</param>
 /// <param name="allowSavedBiosPassword">Reads the machine policy on keeping the BIOS password; called on every use.</param>
+/// <param name="passwordFailures">Where wrong BIOS passwords in a row are counted across restarts; in memory when null.</param>
 internal sealed class RequestHandler(
     ILogger<RequestHandler> logger,
     FirmwareProviderResolver resolver,
@@ -23,7 +24,8 @@ internal sealed class RequestHandler(
     TimeProvider time,
     ChargeOverrideStore overrides,
     IPasswordProtector? passwords = null,
-    Func<bool>? allowSavedBiosPassword = null)
+    Func<bool>? allowSavedBiosPassword = null,
+    PasswordFailureStore? passwordFailures = null)
 {
     // Requests per account: the app makes two at start-up and a few a second at most while someone clicks around.
     // A UI bug once sent 37,000 requests in 90 seconds; the excess is refused before touching firmware.
@@ -50,7 +52,7 @@ internal sealed class RequestHandler(
         typeof(RequestHandler).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
 
     private static readonly string[] Features =
-        [IpcFeatures.Firmware, IpcFeatures.ChargeModes, IpcFeatures.ChargeOverride, IpcFeatures.BiosPassword];
+        [IpcFeatures.Firmware, IpcFeatures.ChargeModes, IpcFeatures.ChargeOverride, IpcFeatures.BiosPassword, IpcFeatures.BiosPasswordLockout];
 
     private readonly IPasswordProtector _passwords = passwords ?? new DpapiPasswordProtector();
     private readonly Func<bool> _allowSavedBiosPassword = allowSavedBiosPassword ?? (() => true);
@@ -58,8 +60,10 @@ internal sealed class RequestHandler(
     // One firmware operation at a time, so a read can't interleave with another client's write and its read-back.
     // Also guards the charge override.
     private readonly SemaphoreSlim _firmwareLock = new(1, 1);
-    private readonly Lazy<IFirmwareProvider?> _provider = new(
-        () => resolver.Resolve() is { } provider ? new WriteLimitedProvider(provider, time) : null);
+    // The lockout check comes first, so a change it refuses doesn't use up the write limit.
+    private readonly Lazy<PasswordLockoutProvider?> _provider = new(() => resolver.Resolve() is { } provider
+        ? new PasswordLockoutProvider(new WriteLimitedProvider(provider, time), passwordFailures, logger)
+        : null);
     private readonly ConcurrentDictionary<string, TokenBucket> _requestBudgets = new(StringComparer.OrdinalIgnoreCase);
     private readonly LogThrottle _warnings = new(WarningWindow, time);
 
@@ -206,7 +210,8 @@ internal sealed class RequestHandler(
                 logger.LogWarning("Couldn't switch the battery back to '{Mode}': the BIOS didn't accept the password. Firmly will ask for it.",
                     restore.Label);
             }
-            catch (Exception ex) when (ex is FirmwarePolicyException or FirmwareWriteException or WriteLimitExceededException)
+            catch (Exception ex) when (ex is FirmwarePolicyException or FirmwareWriteException or WriteLimitExceededException
+                or BiosPasswordLockedException)
             {
                 _nextRevertAttempt = now + RevertRetryInterval;
                 if (_warnings.ShouldLog("revert", out var repeats))
@@ -230,7 +235,8 @@ internal sealed class RequestHandler(
             ChargeModes: modes,
             ChargeModeAccess: modes is null ? null : gateway.GetChargeModeAccess(modes, settings, caller),
             ChargeOverride: Override?.ToIpc(_waitingForPassword),
-            BiosPasswordSet: IsBiosPasswordSet(gateway));
+            BiosPasswordSet: IsBiosPasswordSet(gateway),
+            BiosPasswordTriesLeft: _provider.Value?.TriesLeft);
     }
 
     private IpcResponse SetSetting(FirmwareGateway gateway, IpcRequest request, FirmwareCaller caller, string callerName)
@@ -352,7 +358,15 @@ internal sealed class RequestHandler(
             if (_warnings.ShouldLog($"password|{callerName}", out var repeats))
                 logger.LogWarning("Firmware rejected '{Name}' from {User}: the BIOS password was missing or wrong.{Repeats}",
                     what, callerName, LogThrottle.Note(repeats));
-            return IpcResponse.Fail(IpcError.BiosPasswordRequired, "The BIOS administrator password is missing or wrong.", ex.VendorCode);
+            return IpcResponse.Fail(IpcError.BiosPasswordRequired, "The BIOS administrator password is missing or wrong.", ex.VendorCode)
+                with { BiosPasswordTriesLeft = _provider.Value?.TriesLeft };
+        }
+        catch (BiosPasswordLockedException ex)
+        {
+            if (_warnings.ShouldLog($"password-locked|{callerName}", out var repeats))
+                logger.LogWarning("Didn't send '{Name}' from {User} to the firmware: {Reason}{Repeats}",
+                    what, callerName, ex.Message, LogThrottle.Note(repeats));
+            return IpcResponse.Fail(IpcError.BiosPasswordRequired, ex.Message) with { BiosPasswordTriesLeft = 0 };
         }
         catch (FirmwareWriteException ex)
         {

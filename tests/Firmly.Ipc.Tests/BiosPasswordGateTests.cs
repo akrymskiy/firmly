@@ -96,6 +96,54 @@ public class BiosPasswordGateTests
     }
 
     [Fact]
+    public async Task Refused_PassesOnTheTriesLeft()
+    {
+        var source = new ScriptedSource(new("a"), new(Password));
+        var gate = new BiosPasswordGate { Source = source, IsSet = true, TriesLeft = 3 };
+
+        await gate.CallAsync(password => password == Password
+            ? Task.FromResult(0)
+            : throw new FirmlyServiceException(IpcError.BiosPasswordRequired, "wrong") { BiosPasswordTriesLeft = 2 });
+
+        Assert.Equal([3, 2], source.TriesLeft);
+        Assert.Null(gate.TriesLeft);
+    }
+
+    [Fact]
+    public async Task Locked_IsNotAskedAgain()
+    {
+        var source = new ScriptedSource(new("a"), new("b"));
+        var gate = new BiosPasswordGate { Source = source, IsSet = true };
+        var tries = 0;
+
+        var ex = await Assert.ThrowsAsync<FirmlyServiceException>(() => gate.CallAsync<int>(_ =>
+        {
+            tries++;
+            throw new FirmlyServiceException(IpcError.BiosPasswordRequired, "locked") { BiosPasswordTriesLeft = 0 };
+        }));
+
+        Assert.True(ex.IsBiosPasswordLocked);
+        Assert.Equal(1, tries);
+        Assert.Single(source.Asked);
+        Assert.Equal(0, gate.TriesLeft);
+    }
+
+    [Fact]
+    public async Task AlreadyLocked_AsksNothing_AndSendsNothing()
+    {
+        var source = new ScriptedSource(new BiosPasswordAnswer(Password));
+        var gate = new BiosPasswordGate { Source = source, IsSet = true, TriesLeft = 0 };
+        var called = false;
+
+        var ex = await Assert.ThrowsAsync<FirmlyServiceException>(
+            () => gate.CallAsync(_ => { called = true; return Task.FromResult(0); }));
+
+        Assert.True(ex.IsBiosPasswordLocked);
+        Assert.False(called);
+        Assert.Empty(source.Asked);
+    }
+
+    [Fact]
     public void Answer_NeverPrintsThePassword() =>
         Assert.DoesNotContain(Password, new BiosPasswordAnswer(Password).ToString());
 
@@ -106,11 +154,14 @@ public class BiosPasswordGateTests
 
         public List<BiosPasswordAnswer?> Asked { get; } = [];
 
+        public List<int?> TriesLeft { get; } = [];
+
         public BiosPasswordAnswer? Accepted { get; private set; }
 
-        public Task<BiosPasswordAnswer?> GetAsync(BiosPasswordAnswer? rejected)
+        public Task<BiosPasswordAnswer?> GetAsync(BiosPasswordAnswer? rejected, int? triesLeft)
         {
             Asked.Add(rejected);
+            TriesLeft.Add(triesLeft);
             return Task.FromResult(_answers.TryDequeue(out var answer) ? answer : null);
         }
 
