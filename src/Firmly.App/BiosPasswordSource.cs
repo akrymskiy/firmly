@@ -34,8 +34,10 @@ internal sealed class BiosPasswordSource(BiosPasswordGate gate) : IBiosPasswordS
 
     public async Task AcceptedAsync(BiosPasswordAnswer answer)
     {
-        if (answer.Remember && gate.AllowSaved)
+        if (answer.Remember == true && gate.AllowSaved)
             await BiosPasswordVault.SaveAsync(answer.Password);
+        else if (answer.Remember == false && BiosPasswordVault.HasSaved)
+            await BiosPasswordVault.ForgetAsync();
     }
 
     private async Task<BiosPasswordAnswer?> AskAsync(bool rejected, int? triesLeft)
@@ -43,11 +45,15 @@ internal sealed class BiosPasswordSource(BiosPasswordGate gate) : IBiosPasswordS
         App.ShowMainWindow();
         var root = await App.GetXamlRootAsync();
         var canRemember = gate.AllowSaved && await BiosPasswordVault.IsAvailableAsync();
+        // Says what will be true afterwards: with a password saved already (not used, or out of date), it starts ticked,
+        // keeps the one typed here in its place, and forgets the saved one when unticked.
+        var saved = BiosPasswordVault.HasSaved;
 
         var password = new PasswordBox { Header = Text.Get("Password_Header") };
         var remember = new CheckBox
         {
-            Content = Text.Get("Password_Remember"),
+            Content = Text.Get(saved ? "Password_KeepRemembered" : "Password_Remember"),
+            IsChecked = saved,
             Visibility = canRemember ? Visibility.Visible : Visibility.Collapsed,
         };
         var panel = new StackPanel { Spacing = 12, MaxWidth = 440 };
@@ -81,7 +87,7 @@ internal sealed class BiosPasswordSource(BiosPasswordGate gate) : IBiosPasswordS
         dialog.Opened += (_, _) => password.Focus(FocusState.Programmatic);
 
         return await dialog.ShowAsync() == ContentDialogResult.Primary && password.Password.Length > 0
-            ? new(password.Password, remember.IsChecked == true)
+            ? new(password.Password, canRemember ? remember.IsChecked == true : null)
             : null;
     }
 

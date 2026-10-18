@@ -2,9 +2,12 @@
 namespace Firmly.Ipc;
 
 /// <summary>An answer to "what's the BIOS administrator password?".</summary>
-/// <param name="Remember">Save it, protected by Windows Hello, once the BIOS has accepted it.</param>
+/// <param name="Remember">
+/// Once the BIOS has accepted it: true saves it, protected by Windows Hello, in place of any saved one; false forgets the
+/// saved one; null leaves things as they are (the user wasn't offered the choice).
+/// </param>
 /// <param name="FromVault">It's the saved one, so a refusal means the saved one is out of date.</param>
-public sealed record BiosPasswordAnswer(string Password, bool Remember = false, bool FromVault = false)
+public sealed record BiosPasswordAnswer(string Password, bool? Remember = null, bool FromVault = false)
 {
     // Records print their properties; this one must never show up in a log or the debugger's summary.
     public override string ToString() => FromVault ? "saved BIOS password" : "typed BIOS password";

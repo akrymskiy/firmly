@@ -350,6 +350,9 @@
   <data name="Password_Header">
     <value>Password</value>
   </data>
+  <data name="Password_KeepRemembered">
+    <value>Keep it remembered on this PC, unlocked with Windows Hello</value>
+  </data>
   <data name="Password_LastTryMessage">
     <value>One more wrong password and the BIOS will refuse changes until the PC restarts.</value>
   </data>
