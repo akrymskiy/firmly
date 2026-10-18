@@ -1,9 +1,11 @@
 name: Release
 
-# Pushing a tag such as v0.2.0 or v0.2.0-preview.1 builds signed x64 and ARM64 packages and publishes them as a
-# GitHub release (a prerelease when the tag has a suffix). The packages are signed with a self-signed test
-# certificate (secrets SIGNING_CERTIFICATE, a base64 .pfx, and SIGNING_CERTIFICATE_PASSWORD); Install.cmd in each
-# zip trusts it before installing.
+# Pushing a tag such as v0.2.0 or v0.2.0-preview.1 builds x64 and ARM64 packages and:
+# - publishes them as a GitHub release (a prerelease when the tag has a suffix), signed with a self-signed test
+#   certificate (secrets SIGNING_CERTIFICATE, a base64 .pfx, and SIGNING_CERTIFICATE_PASSWORD); Install.cmd in each
+#   zip trusts it before installing;
+# - bundles the same packages, unsigned, into Firmly_<version>.msixupload (artifact Firmly_Store) to upload to
+#   Partner Center, which signs them for the Microsoft Store.
 
 on:
   push:
@@ -25,17 +27,18 @@ jobs:
         with:
           global-json-file: global.json
 
-      # v0.2.0-preview.1 -> version 0.2.0-preview.1 for the app, 0.2.0.<run number> for the package, which must be
-      # four numbers and grow with each release so installing one over another is an upgrade.
+      # v0.2.0-preview.1 -> version 0.2.0-preview.1 for the app, 0.2.<run number>.0 for the package. A package version
+      # is four numbers that must grow with each release, so installing one over another is an upgrade; the Store
+      # also wants the last one 0. The run number grows with every release, whatever the patch number does.
       - name: Version
         id: version
         shell: pwsh
         run: |
           $version = '${{ github.ref_name }}'.TrimStart('v')
           $core = ($version -split '[-+]')[0]
-          if ($core -notmatch '^\d+\.\d+\.\d+$') { throw "Tag ${{ github.ref_name }} isn't vMAJOR.MINOR.PATCH[-suffix]." }
+          if ($core -notmatch '^(\d+)\.(\d+)\.\d+$') { throw "Tag ${{ github.ref_name }} isn't vMAJOR.MINOR.PATCH[-suffix]." }
           "version=$version" >> $env:GITHUB_OUTPUT
-          "package=$core.${{ github.run_number }}" >> $env:GITHUB_OUTPUT
+          "package=$($Matches[1]).$($Matches[2]).${{ github.run_number }}.0" >> $env:GITHUB_OUTPUT
 
       - name: Set the package version
         shell: pwsh
@@ -45,34 +48,44 @@ jobs:
           $manifest.Package.Identity.Version = '${{ steps.version.outputs.package }}'
           $manifest.Save((Resolve-Path $path))
 
-      - name: Signing certificate
-        shell: pwsh
-        env:
-          CERTIFICATE: ${{ secrets.SIGNING_CERTIFICATE }}
-        run: '[IO.File]::WriteAllBytes("$env:RUNNER_TEMP\signing.pfx", [Convert]::FromBase64String($env:CERTIFICATE))'
-
+      # Unsigned: the Store signs its copy, and the zip's copy is signed below.
       - name: Build the package
         shell: pwsh
-        env:
-          CERTIFICATE_PASSWORD: ${{ secrets.SIGNING_CERTIFICATE_PASSWORD }}
         run: >
           dotnet build src/Firmly.App -c Release -p:Platform=${{ matrix.platform }}
           -p:Version=${{ steps.version.outputs.version }}
-          -p:GenerateAppxPackageOnBuild=true -p:AppxBundle=Never
-          -p:AppxPackageSigningEnabled=true -p:PackageCertificateKeyFile="$env:RUNNER_TEMP\signing.pfx"
-          -p:PackageCertificatePassword="$env:CERTIFICATE_PASSWORD"
+          -p:GenerateAppxPackageOnBuild=true -p:AppxBundle=Never -p:AppxPackageSigningEnabled=false
           -p:AppxPackageDir="$env:RUNNER_TEMP\AppPackages\"
 
-      # One zip per architecture: the package, the Windows App SDK runtime it depends on, the certificate, and the
-      # installer scripts.
+      - name: Keep the unsigned package for the Store
+        shell: pwsh
+        run: |
+          $built = Get-ChildItem "$env:RUNNER_TEMP\AppPackages" -Directory | Select-Object -First 1
+          $store = New-Item "$env:RUNNER_TEMP\Store" -ItemType Directory
+          Copy-Item (Get-ChildItem $built -Filter '*.msix' | Select-Object -First 1) "$store\Firmly_${{ matrix.platform }}.msix"
+
+      # One zip per architecture: the package, signed with the test certificate, the Windows App SDK runtime it
+      # depends on, the certificate, and the installer scripts.
       - name: Zip
         shell: pwsh
+        env:
+          CERTIFICATE: ${{ secrets.SIGNING_CERTIFICATE }}
+          CERTIFICATE_PASSWORD: ${{ secrets.SIGNING_CERTIFICATE_PASSWORD }}
         run: |
           $name = 'Firmly_${{ steps.version.outputs.version }}_${{ matrix.platform }}'
           $built = Get-ChildItem "$env:RUNNER_TEMP\AppPackages" -Directory | Select-Object -First 1
           $zip = New-Item "$env:RUNNER_TEMP\$name" -ItemType Directory
           Copy-Item (Get-ChildItem $built -Filter '*.msix' | Select-Object -First 1) "$zip\$name.msix"
-          Copy-Item (Get-ChildItem $built -Filter '*.cer' | Select-Object -First 1) "$zip\Firmly.cer"
+
+          $pfx = "$env:RUNNER_TEMP\signing.pfx"
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:CERTIFICATE))
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName | Select-Object -Last 1
+          & $signtool sign /fd SHA256 /f $pfx /p $env:CERTIFICATE_PASSWORD "$zip\$name.msix"
+          if ($LASTEXITCODE) { throw "signtool failed ($LASTEXITCODE)" }
+          $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new($pfx, $env:CERTIFICATE_PASSWORD)
+          [IO.File]::WriteAllBytes("$zip\Firmly.cer", $certificate.Export('Cert'))
+          Remove-Item $pfx
+
           $runtime = Get-ChildItem "$built\Dependencies\${{ matrix.platform }}" -Filter 'Microsoft.WindowsAppRuntime*.msix' | Select-Object -First 1
           Copy-Item $runtime "$zip\$($runtime.BaseName)_${{ matrix.platform }}.msix"
           Copy-Item tools/installer/Install.ps1, tools/installer/Install.cmd $zip
@@ -85,6 +98,45 @@ jobs:
           path: ${{ runner.temp }}/Firmly_*.zip
           if-no-files-found: error
 
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Store_${{ matrix.platform }}
+          path: ${{ runner.temp }}/Store/*.msix
+          if-no-files-found: error
+
+  # Both architectures in one bundle, as Partner Center takes them. Not part of the GitHub release: unsigned, it
+  # installs nowhere but through the Store.
+  store:
+    needs: package
+    runs-on: windows-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: Store_*
+          path: store
+          merge-multiple: true
+
+      - name: Bundle
+        shell: pwsh
+        run: |
+          $version = '${{ github.ref_name }}'.TrimStart('v')
+          # The packages' version (see the package job), or makeappx makes one up from the date.
+          if ($version -notmatch '^(\d+)\.(\d+)\.') { throw "Tag ${{ github.ref_name }} isn't vMAJOR.MINOR.PATCH[-suffix]." }
+          $packageVersion = "$($Matches[1]).$($Matches[2]).${{ github.run_number }}.0"
+          $makeappx = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\makeappx.exe" | Sort-Object FullName | Select-Object -Last 1
+          $bundle = "$env:RUNNER_TEMP\Firmly_$version.msixbundle"
+          & $makeappx bundle /d store /p $bundle /bv $packageVersion /o
+          if ($LASTEXITCODE) { throw "makeappx failed ($LASTEXITCODE)" }
+          # An .msixupload is a zip of the bundle (and, optionally, symbols).
+          Compress-Archive $bundle "$env:RUNNER_TEMP\Firmly_$version.zip"
+          Move-Item "$env:RUNNER_TEMP\Firmly_$version.zip" "$env:RUNNER_TEMP\Firmly_$version.msixupload"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Firmly_Store
+          path: ${{ runner.temp }}/Firmly_*.msixupload
+          if-no-files-found: error
+
   release:
     needs: package
     runs-on: ubuntu-latest
@@ -93,6 +145,7 @@ jobs:
 
       - uses: actions/download-artifact@v8
         with:
+          pattern: Firmly_*64
           path: packages
           merge-multiple: true
 
