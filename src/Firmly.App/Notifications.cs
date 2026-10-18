@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Windows.AppNotifications;
 using Microsoft.Windows.AppNotifications.Builder;
 
@@ -10,6 +11,7 @@ namespace Firmly.App;
 internal static class Notifications
 {
     private const string ActionKey = "action";
+    private const string EndedKey = "ended";
 
     /// <summary>A button that ends the timed charge now (asking for the BIOS password if needed).</summary>
     public const string SwitchBackAction = "switch-back";
@@ -51,13 +53,19 @@ internal static class Notifications
     /// With <paramref name="button"/>: what the button does, e.g. <see cref="SwitchBackAction"/>. Clicking the notification
     /// itself does the same: it's what the notification is for.
     /// </param>
-    public static void Show(string title, string text, string? button = null, string? action = null)
+    /// <param name="endedAt">
+    /// For one on how a timed charge ended: when it did. Clicking it closes the note on the Battery page about it, which
+    /// would only say the same again.
+    /// </param>
+    public static void Show(string title, string text, string? button = null, string? action = null, DateTimeOffset? endedAt = null)
     {
         if (!s_registered)
             return;
         var builder = new AppNotificationBuilder().AddText(title).AddText(text);
         if (button is not null && action is not null)
             builder.AddArgument(ActionKey, action).AddButton(new AppNotificationButton(button).AddArgument(ActionKey, action));
+        if (endedAt is { } ended)
+            builder.AddArgument(EndedKey, ended.UtcTicks.ToString(CultureInfo.InvariantCulture));
         try
         {
             AppNotificationManager.Default.Show(builder.BuildNotification());
@@ -72,6 +80,10 @@ internal static class Notifications
     public static void Handle(IDictionary<string, string> arguments)
     {
         App.ShowBattery();
+        if (arguments.TryGetValue(EndedKey, out var ended)
+            && long.TryParse(ended, NumberStyles.None, CultureInfo.InvariantCulture, out var ticks)
+            && ticks <= DateTimeOffset.MaxValue.UtcTicks)
+            App.Session.Charge.DismissEndNote(new DateTimeOffset(ticks, TimeSpan.Zero));
         if (arguments.TryGetValue(ActionKey, out var action) && action == SwitchBackAction)
             App.Session.Charge.SwitchBackNowCommand.Execute(null);
     }

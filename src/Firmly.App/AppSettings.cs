@@ -27,4 +27,14 @@ internal static class AppSettings
         get => Values["SwitchBackByItself"] as bool? ?? false;
         set => Values["SwitchBackByItself"] = value;
     }
+
+    /// <summary>
+    /// The note on how a timed charge ended is closed for every one that ended at this time or before. Kept per user,
+    /// so closing it doesn't hide it from others on the same PC.
+    /// </summary>
+    public static DateTimeOffset EndNoteClosedUpTo
+    {
+        get => Values["EndNoteClosedUpTo"] is long ticks ? new DateTimeOffset(ticks, TimeSpan.Zero) : DateTimeOffset.MinValue;
+        set => Values["EndNoteClosedUpTo"] = value.UtcTicks;
+    }
 }

@@ -117,6 +117,8 @@ public sealed class BiosPasswordTests : IDisposable
         Assert.Equal(IpcError.None, response.Error);
         Assert.Null(response.ChargeOverride);
         Assert.Equal(Maximize, CurrentValue);
+        // Whoever typed the password knows: nothing for the app to report.
+        Assert.Null(response.LastOverrideEnd);
     }
 
     [Fact]
@@ -135,6 +137,8 @@ public sealed class BiosPasswordTests : IDisposable
         Assert.Equal(Maximize, CurrentValue);
         Assert.Equal(Password, _provider.Writes[^1].Password);
         Assert.False(File.Exists(StorePath));
+        var ended = (await handler.HandleAsync(new(IpcCommand.GetSettings), User, "test", Ct)).LastOverrideEnd;
+        Assert.Equal(new ChargeOverrideEnd("minimize", "maximize", ManualTimeProvider.Start + TimeSpan.FromDays(1)), ended);
     }
 
     [Fact]

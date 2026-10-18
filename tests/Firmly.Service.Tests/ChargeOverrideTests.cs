@@ -258,6 +258,84 @@ public sealed class ChargeOverrideTests : IDisposable
     }
 
     [Fact]
+    public async Task SwitchingBack_RecordsHowItEnded_AcrossARestart()
+    {
+        var handler = CreateHandler();
+        await handler.HandleAsync(Override("minimize", "maximize", In(TimeSpan.FromDays(1))), User, "test", Ct);
+        Assert.Null((await handler.HandleAsync(new(IpcCommand.GetSettings), User, "test", Ct)).LastOverrideEnd);
+
+        // Asleep through the end: it's recorded when the switch back happened, not when it was due.
+        _time.Advance(TimeSpan.FromDays(1) + TimeSpan.FromHours(2));
+        await handler.CheckChargeOverrideAsync(Ct);
+
+        var expected = new ChargeOverrideEnd("minimize", "maximize", In(TimeSpan.FromDays(1) + TimeSpan.FromHours(2)));
+        Assert.Equal(expected, (await handler.HandleAsync(new(IpcCommand.GetSettings), User, "test", Ct)).LastOverrideEnd);
+        Assert.Equal(expected, (await CreateHandler().HandleAsync(new(IpcCommand.GetSettings), User, "test", Ct)).LastOverrideEnd);
+    }
+
+    [Fact]
+    public async Task ModeToReturnToGone_RecordsThatTheFullChargeStayed()
+    {
+        var handler = CreateHandler();
+        await handler.HandleAsync(Override("minimize", "maximize", In(TimeSpan.FromDays(1))), User, "test", Ct);
+        _provider.ChargeModeSetting = new("Battery Health Manager",
+        [
+            new(Manage, "manage", ChargeModeKind.Adaptive),
+            new(Minimize, "minimize", ChargeModeKind.Full),
+        ]);
+
+        _time.Advance(TimeSpan.FromDays(1));
+        await handler.CheckChargeOverrideAsync(Ct);
+
+        var response = await handler.HandleAsync(new(IpcCommand.GetSettings), User, "test", Ct);
+        Assert.Null(response.ChargeOverride);
+        Assert.Equal(new ChargeOverrideEnd("minimize", "maximize", In(TimeSpan.FromDays(1)), SwitchedBack: false), response.LastOverrideEnd);
+        Assert.Equal(Minimize, CurrentValue);
+    }
+
+    [Fact]
+    public async Task StartingAnother_ClearsTheRecord()
+    {
+        var handler = CreateHandler();
+        await handler.HandleAsync(Override("minimize", "maximize", In(TimeSpan.FromDays(1))), User, "test", Ct);
+        _time.Advance(TimeSpan.FromDays(1));
+        await handler.CheckChargeOverrideAsync(Ct);
+
+        var response = await handler.HandleAsync(Override("minimize", "manage", In(TimeSpan.FromDays(2))), User, "test", Ct);
+
+        Assert.Null(response.LastOverrideEnd);
+        Assert.Null((await CreateHandler().HandleAsync(new(IpcCommand.GetSettings), User, "test", Ct)).LastOverrideEnd);
+    }
+
+    [Fact]
+    public async Task EndingItByHand_RecordsNothing()
+    {
+        var handler = CreateHandler();
+        await handler.HandleAsync(Override("minimize", "maximize", In(TimeSpan.FromDays(1))), User, "test", Ct);
+        await handler.HandleAsync(new(IpcCommand.CancelChargeOverride), User, "test", Ct);
+        await handler.HandleAsync(Override("minimize", "maximize", In(TimeSpan.FromDays(1))), User, "test", Ct);
+        await handler.HandleAsync(new(IpcCommand.SetChargeMode, "manage"), User, "test", Ct);
+
+        _time.Advance(TimeSpan.FromDays(2));
+        await handler.CheckChargeOverrideAsync(Ct);
+
+        Assert.Null((await handler.HandleAsync(new(IpcCommand.GetSettings), User, "test", Ct)).LastOverrideEnd);
+    }
+
+    [Fact]
+    public async Task DamagedRecordFile_IsIgnored_AndLogged()
+    {
+        Directory.CreateDirectory(_folder);
+        File.WriteAllText(Path.Combine(_folder, "charge-override-ended.json"), "{ not json");
+
+        var response = await CreateHandler().HandleAsync(new(IpcCommand.GetSettings), User, "test", Ct);
+
+        Assert.Equal(IpcError.None, response.Error);
+        Assert.Null(response.LastOverrideEnd);
+        Assert.Contains(_logger.Warnings, w => w.Contains("Couldn't read how the last charge override ended"));
+    }
+
+    [Fact]
     public async Task DamagedStoreFile_IsIgnored_AndLogged()
     {
         Directory.CreateDirectory(_folder);

@@ -106,10 +106,21 @@ public sealed record SettingInfo(FirmwareSetting Setting, FirmwareChangeAccess A
 public sealed record ChargeOverride(
     string ModeId, string RestoreModeId, DateTimeOffset Until, bool KeepsBiosPassword = false, bool WaitingForPassword = false);
 
+/// <summary>
+/// How the last charge override ended, when the service ended it by itself; kept until another override starts, so
+/// the app can say so even if it wasn't running then.
+/// </summary>
+/// <param name="ModeId">The mode that was on for a while.</param>
+/// <param name="RestoreModeId">The mode the service switched back to, or meant to.</param>
+/// <param name="EndedAt">When the service switched back, or found it couldn't.</param>
+/// <param name="SwitchedBack">False when the firmware no longer offered <paramref name="RestoreModeId"/>, so <paramref name="ModeId"/> stayed on.</param>
+public sealed record ChargeOverrideEnd(string ModeId, string RestoreModeId, DateTimeOffset EndedAt, bool SwitchedBack = true);
+
 /// <param name="ReportedChargeLimit">See <see cref="BatteryCharge"/>; null when Windows sees real battery readings.</param>
 /// <param name="ChargeModes">Null when the firmware offers none Firmly knows, or the service predates them.</param>
 /// <param name="ChargeModeAccess">What the caller may do with <paramref name="ChargeModes"/>.</param>
 /// <param name="ChargeOverride">The charge mode chosen for a while, if any.</param>
+/// <param name="LastOverrideEnd">How the last one ended, if the service ended it by itself.</param>
 /// <param name="BiosPasswordSet">A BIOS administrator password is set, so changes need it.</param>
 /// <param name="BiosPasswordTriesLeft">See <see cref="IpcResponse.BiosPasswordTriesLeft"/>.</param>
 public sealed record FirmwareSnapshot(
@@ -119,13 +130,14 @@ public sealed record FirmwareSnapshot(
     FirmwareChangeAccess ChargeModeAccess = FirmwareChangeAccess.ReadOnly,
     ChargeOverride? ChargeOverride = null,
     bool BiosPasswordSet = false,
-    int? BiosPasswordTriesLeft = null);
+    int? BiosPasswordTriesLeft = null,
+    ChargeOverrideEnd? LastOverrideEnd = null);
 
 /// <summary>Carries the result for the command that was sent, or an <see cref="Error"/>.</summary>
 /// <param name="ReportedChargeLimit">
 /// With <see cref="Settings"/>: the charge limit at which the firmware rescales Windows' battery readings, if any.
 /// </param>
-/// <param name="ChargeModes">With <see cref="Settings"/>, as in <see cref="FirmwareSnapshot"/>, like the three after it.</param>
+/// <param name="ChargeModes">With <see cref="Settings"/>, as in <see cref="FirmwareSnapshot"/>, like the three after it and <paramref name="LastOverrideEnd"/>.</param>
 /// <param name="BiosPasswordTriesLeft">
 /// How many more wrong BIOS passwords in a row the firmware takes before it refuses changes until the PC restarts; 0 once
 /// it does. Null when the service doesn't know how this firmware locks. Sent with settings and with
@@ -143,7 +155,8 @@ public sealed record IpcResponse(
     FirmwareChangeAccess? ChargeModeAccess = null,
     ChargeOverride? ChargeOverride = null,
     bool BiosPasswordSet = false,
-    int? BiosPasswordTriesLeft = null)
+    int? BiosPasswordTriesLeft = null,
+    ChargeOverrideEnd? LastOverrideEnd = null)
 {
     public static IpcResponse Fail(IpcError error, string message, uint? vendorCode = null) =>
         new(error, message, VendorCode: vendorCode);

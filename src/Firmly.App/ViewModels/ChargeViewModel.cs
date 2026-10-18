@@ -26,12 +26,17 @@ public sealed record OverrideDuration(string Label, TimeSpan Length, bool IsCust
 public partial class ChargeViewModel(FirmlyClient client, Action<FirmwareSnapshot> show, BiosPasswordGate passwords) : ObservableObject
 {
     private ChargeOverride? _override;
+    private ChargeOverrideEnd? _lastEnd;
+    private bool _hadSnapshot;
 
     /// <summary>A change was refused or failed; carries the reason. Also shown in <see cref="Note"/>.</summary>
     public event Action<string>? ChangeFailed;
 
-    /// <summary>A timed charge ran its course and the service switched back; carries the mode it's now on.</summary>
-    public event Action<string>? OverrideEnded;
+    /// <summary>
+    /// A timed charge ran its course while Firmly was running, and the service switched back (or found it couldn't);
+    /// carries what to tell the user, and when it ended, for <see cref="DismissEndNote(DateTimeOffset)"/>.
+    /// </summary>
+    public event Action<string, DateTimeOffset>? OverrideEnded;
 
     /// <summary>
     /// A timed charge has ended, but switching back needs the BIOS password, which the service doesn't have; carries
@@ -153,17 +158,65 @@ public partial class ChargeViewModel(FirmlyClient client, Action<FirmwareSnapsho
         ? Microsoft.UI.Xaml.Controls.InfoBarSeverity.Warning
         : Microsoft.UI.Xaml.Controls.InfoBarSeverity.Success;
 
+    // --- How the last one ended ---
+
+    /// <summary>
+    /// The service ended the last timed charge by itself, and this user hasn't closed the note about it yet. Shown
+    /// whether or not Firmly was running then; gone once another timed charge starts.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool HasEndNote { get; set; }
+
+    /// <summary>e.g. "On Saturday, October 18, 2026 3:12 PM, Firmly switched the battery back to ...".</summary>
+    [ObservableProperty]
+    public partial string EndNoteMessage { get; set; } = "";
+
+    [ObservableProperty]
+    public partial Microsoft.UI.Xaml.Controls.InfoBarSeverity EndNoteSeverity { get; set; }
+
+    /// <summary>Closes the note about how the last timed charge ended, for this user.</summary>
+    [RelayCommand]
+    private void DismissEndNote()
+    {
+        if (_lastEnd is { } end)
+            DismissEndNote(end.EndedAt);
+    }
+
+    /// <summary>Closes the note about a timed charge that ended at <paramref name="endedAt"/>, or before.</summary>
+    public void DismissEndNote(DateTimeOffset endedAt)
+    {
+        if (endedAt > AppSettings.EndNoteClosedUpTo)
+            AppSettings.EndNoteClosedUpTo = endedAt;
+        ShowEndNote();
+    }
+
+    private void ShowEndNote()
+    {
+        HasEndNote = _lastEnd is { } end && !HasOverride && end.EndedAt > AppSettings.EndNoteClosedUpTo;
+        if (_lastEnd is not { } last)
+            return;
+
+        EndNoteMessage = last.SwitchedBack
+            ? Text.Format("Charge_EndedSwitchedBack", Label(last.RestoreModeId), last.EndedAt.ToLocalTime())
+            : Text.Format("Charge_EndedStayed", Label(last.RestoreModeId), last.EndedAt.ToLocalTime(), Label(last.ModeId));
+        EndNoteSeverity = last.SwitchedBack
+            ? Microsoft.UI.Xaml.Controls.InfoBarSeverity.Success
+            : Microsoft.UI.Xaml.Controls.InfoBarSeverity.Warning;
+    }
+
     /// <summary>Shows that there's no connection, so nothing to offer.</summary>
     public void Clear()
     {
         IsAvailable = false;
         HasOverride = false;
+        HasEndNote = false;
         Modes.Clear();
     }
 
     /// <summary>Shows what the service reported.</summary>
     /// <param name="supportsOverride">Whether the service lists <see cref="IpcFeatures.ChargeOverride"/>.</param>
-    public void Update(FirmwareSnapshot snapshot, bool supportsOverride)
+    /// <param name="reportsOverrideEnd">Whether the service lists <see cref="IpcFeatures.ChargeOverrideEnd"/>.</param>
+    public void Update(FirmwareSnapshot snapshot, bool supportsOverride, bool reportsOverrideEnd)
     {
         SupportsOverride = supportsOverride;
         if (snapshot.ChargeModes is not { } modes)
@@ -202,13 +255,26 @@ public partial class ChargeViewModel(FirmlyClient client, Action<FirmwareSnapsho
         if (rebuilt)
             OnPropertyChanged(nameof(RestoreIndex));
 
-        // Gone after its end time: the service switched back as planned (rather than someone ending it early).
-        if (_override is { } ended && snapshot.ChargeOverride is null && ended.Until <= DateTimeOffset.Now
+        if (reportsOverrideEnd)
+        {
+            // Ended since the last look: say so now. One that ended while Firmly wasn't running is only noted.
+            if (snapshot.LastOverrideEnd is { } end && _hadSnapshot && end.EndedAt != _lastEnd?.EndedAt
+                && end.EndedAt > AppSettings.EndNoteClosedUpTo)
+                OverrideEnded?.Invoke(end.SwitchedBack
+                    ? Text.Format("Notify_EndedText", Label(end.RestoreModeId))
+                    : Text.Format("Notify_StayedText", Label(end.RestoreModeId)), end.EndedAt);
+            _lastEnd = snapshot.LastOverrideEnd;
+        }
+        // An older service doesn't say: gone after its end time means it switched back as planned (rather than
+        // someone ending it early).
+        else if (_override is { } ended && snapshot.ChargeOverride is null && ended.Until <= DateTimeOffset.Now
             && SelectedIndex >= 0 && SelectedIndex < options.Count)
-            OverrideEnded?.Invoke(options[SelectedIndex].Label);
+            OverrideEnded?.Invoke(Text.Format("Notify_EndedText", options[SelectedIndex].Label), ended.Until);
+        _hadSnapshot = true;
 
         _override = snapshot.ChargeOverride;
         HasOverride = _override is not null;
+        ShowEndNote();
         WaitingForPassword = _override?.WaitingForPassword == true;
         if (_override is { } active)
         {
@@ -308,4 +374,8 @@ public partial class ChargeViewModel(FirmlyClient client, Action<FirmwareSnapsho
 
     // The vendor's name for the mode, in the user's language when Firmly has it.
     private static string Label(ChargeMode mode) => Text.GetOr($"ChargeMode_{mode.Id.Replace('-', '_')}", mode.Label);
+
+    // For a mode by id alone, which the firmware may no longer offer: the name Firmly has for it, or the id.
+    private string Label(string modeId) =>
+        Modes.FirstOrDefault(o => o.Id == modeId)?.Label ?? Text.GetOr($"ChargeMode_{modeId.Replace('-', '_')}", modeId);
 }

@@ -37,4 +37,7 @@ public static class IpcFeatures
     /// <see cref="IpcResponse.BiosPasswordTriesLeft"/>, for firmware whose lockout after wrong passwords Firmly knows.
     /// </summary>
     public const string BiosPasswordLockout = "biosPasswordLockout";
+
+    /// <summary><see cref="FirmwareSnapshot.LastOverrideEnd"/>.</summary>
+    public const string ChargeOverrideEnd = "chargeOverrideEnd";
 }

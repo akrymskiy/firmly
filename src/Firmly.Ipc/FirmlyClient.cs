@@ -62,7 +62,8 @@ public sealed class FirmlyClient
             response.ChargeModeAccess ?? FirmwareChangeAccess.ReadOnly,
             response.ChargeOverride,
             response.BiosPasswordSet,
-            response.BiosPasswordTriesLeft);
+            response.BiosPasswordTriesLeft,
+            response.LastOverrideEnd);
     }
 
     /// <returns>The setting as read back from firmware after the change.</returns>

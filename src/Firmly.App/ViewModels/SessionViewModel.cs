@@ -10,6 +10,7 @@ public partial class SessionViewModel : ObservableObject
 {
     private readonly FirmlyClient _client = new();
     private bool _supportsOverride;
+    private bool _reportsOverrideEnd;
 
     public SessionViewModel()
     {
@@ -68,6 +69,7 @@ public partial class SessionViewModel : ObservableObject
         {
             var status = await _client.GetStatusAsync();
             _supportsOverride = status.Features?.Contains(IpcFeatures.ChargeOverride) == true;
+            _reportsOverrideEnd = status.Features?.Contains(IpcFeatures.ChargeOverrideEnd) == true;
             AllowSavedBiosPassword = Passwords.AllowSaved = status.AllowSavedBiosPassword;
             if (status.Vendor is null)
             {
@@ -130,7 +132,7 @@ public partial class SessionViewModel : ObservableObject
         BiosPasswordSet = Passwords.IsSet = snapshot.BiosPasswordSet;
         Passwords.TriesLeft = snapshot.BiosPasswordTriesLeft;
         Battery.SetReportedChargeLimit(snapshot.ReportedChargeLimit);
-        Charge.Update(snapshot, _supportsOverride);
+        Charge.Update(snapshot, _supportsOverride, _reportsOverrideEnd);
 
         var settings = snapshot.Settings;
         var sameCards = Settings.Count == settings.Count

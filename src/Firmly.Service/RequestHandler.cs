@@ -52,7 +52,10 @@ internal sealed class RequestHandler(
         typeof(RequestHandler).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
 
     private static readonly string[] Features =
-        [IpcFeatures.Firmware, IpcFeatures.ChargeModes, IpcFeatures.ChargeOverride, IpcFeatures.BiosPassword, IpcFeatures.BiosPasswordLockout];
+    [
+        IpcFeatures.Firmware, IpcFeatures.ChargeModes, IpcFeatures.ChargeOverride, IpcFeatures.ChargeOverrideEnd,
+        IpcFeatures.BiosPassword, IpcFeatures.BiosPasswordLockout,
+    ];
 
     private readonly IPasswordProtector _passwords = passwords ?? new DpapiPasswordProtector();
     private readonly Func<bool> _allowSavedBiosPassword = allowSavedBiosPassword ?? (() => true);
@@ -69,6 +72,8 @@ internal sealed class RequestHandler(
 
     private StoredChargeOverride? _override;
     private bool _overrideLoaded;
+    private ChargeOverrideEnd? _lastEnd;
+    private bool _lastEndLoaded;
     private DateTimeOffset _nextRevertAttempt;
     // The override has ended, but switching back needs the BIOS password, which someone must send. Not retried
     // meanwhile: a BIOS may count every attempt without the right password against it.
@@ -183,6 +188,7 @@ internal sealed class RequestHandler(
                 logger.LogWarning("Can't switch back to '{Mode}': the firmware no longer offers it. Keeping '{Current}'.",
                     current.RestoreModeId, current.ModeId);
                 SaveOverride(null);
+                SaveLastEnd(new ChargeOverrideEnd(current.ModeId, current.RestoreModeId, now, SwitchedBack: false));
                 return;
             }
 
@@ -199,6 +205,7 @@ internal sealed class RequestHandler(
             {
                 gateway.SetChargeMode(restore.Id, FirmwareCaller.Administrator, password);
                 SaveOverride(null);
+                SaveLastEnd(new ChargeOverrideEnd(current.ModeId, restore.Id, now));
                 logger.LogInformation("Switched the battery back to '{Mode}', as {User} asked.", restore.Label, current.SetBy);
             }
             catch (FirmwareWriteException ex) when (ex.PasswordRejected)
@@ -236,7 +243,8 @@ internal sealed class RequestHandler(
             ChargeModeAccess: modes is null ? null : gateway.GetChargeModeAccess(modes, settings, caller),
             ChargeOverride: Override?.ToIpc(_waitingForPassword),
             BiosPasswordSet: IsBiosPasswordSet(gateway),
-            BiosPasswordTriesLeft: _provider.Value?.TriesLeft);
+            BiosPasswordTriesLeft: _provider.Value?.TriesLeft,
+            LastOverrideEnd: LastEnd);
     }
 
     private IpcResponse SetSetting(FirmwareGateway gateway, IpcRequest request, FirmwareCaller caller, string callerName)
@@ -293,6 +301,8 @@ internal sealed class RequestHandler(
             // Kept only once the BIOS has accepted it.
             var kept = request.KeepBiosPassword ? _passwords.Protect(request.BiosPassword!) : null;
             SaveOverride(new StoredChargeOverride(request.Name, request.Value, until, callerName, kept));
+            // The new one is what the app shows now; it reports its own end.
+            SaveLastEnd(null);
             _nextRevertAttempt = default;
             logger.LogInformation("{User} chose '{Mode}' until {Until:u}, then '{Restore}'{Kept}.",
                 callerName, modes.Current?.Label, until, modes.Find(request.Value)?.Label,
@@ -398,6 +408,27 @@ internal sealed class RequestHandler(
         }
     }
 
+    // Loaded on first use; only touched under _firmwareLock.
+    private ChargeOverrideEnd? LastEnd
+    {
+        get
+        {
+            if (!_lastEndLoaded)
+            {
+                _lastEndLoaded = true;
+                try
+                {
+                    _lastEnd = overrides.LoadEnd();
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+                {
+                    logger.LogError(ex, "Couldn't read how the last charge override ended; ignoring it.");
+                }
+            }
+            return _lastEnd;
+        }
+    }
+
     // Read again after PasswordCheckInterval, or once a password was refused (it may have been set meanwhile).
     private bool IsBiosPasswordSet(FirmwareGateway gateway)
     {
@@ -436,6 +467,23 @@ internal sealed class RequestHandler(
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             logger.LogError(ex, "Couldn't save the charge override; a restart of the service would lose it.");
+        }
+    }
+
+    private void SaveLastEnd(ChargeOverrideEnd? value)
+    {
+        if (value is null && LastEnd is null)
+            return;
+
+        _lastEnd = value;
+        _lastEndLoaded = true;
+        try
+        {
+            overrides.SaveEnd(value);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            logger.LogError(ex, "Couldn't save how the charge override ended; the app may not be able to say so.");
         }
     }
 

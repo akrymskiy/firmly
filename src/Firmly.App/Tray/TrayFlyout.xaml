@@ -48,6 +48,14 @@
                     </InfoBar.ActionButton>
                 </InfoBar>
 
+                <InfoBar
+                    x:Uid="Flyout_EndNote"
+                    Margin="0,12,0,0"
+                    IsOpen="{x:Bind Session.Charge.HasEndNote, Mode=OneWay}"
+                    Severity="{x:Bind Session.Charge.EndNoteSeverity, Mode=OneWay}"
+                    Message="{x:Bind Session.Charge.EndNoteMessage, Mode=OneWay}"
+                    CloseButtonCommand="{x:Bind Session.Charge.DismissEndNoteCommand}" />
+
                 <StackPanel Spacing="4" Visibility="{x:Bind Session.Charge.HasModes, Mode=OneWay}">
                     <TextBlock x:Uid="Flyout_ChargeMode" Margin="0,12,0,0" Style="{StaticResource BodyStrongTextBlockStyle}" />
                     <!-- One-way, as on the Battery page: user picks are handled in code-behind. -->
