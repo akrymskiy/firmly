@@ -72,7 +72,7 @@ Answer the questionnaire as a **utility** app. It has no violence, sexual conten
 
 **Copyright and trademark info:** © 2026 Alex Krymskiy. HP and the HP product names are trademarks of HP Inc.
 
-**Screenshots:** the Battery page and the tray panel, in light and dark mode (at least one; 1366×768 or larger).
+**Screenshots:** `tools/store/screenshots/battery-light.png` and `battery-dark.png` (the Battery page, 2138×1230). The Store wants at least one, 1366×768 or larger. A tray panel screenshot is best taken by hand with Win+Shift+S on a real desktop.
 
 ## Submission options
 
