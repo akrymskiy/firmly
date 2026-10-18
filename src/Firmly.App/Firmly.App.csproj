@@ -29,6 +29,9 @@
     <Content Include="Assets\StoreLogo.png" />
     <Content Include="Assets\AppIcon.ico" />
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
+    <!-- Packaging copies these into the AppX layout and the .msix by itself. Copied to the build output too, because
+         tools\install-package.ps1 registers that folder as the package: without them, Windows shows a grey square. -->
+    <Content Update="Assets\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
