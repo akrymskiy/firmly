@@ -8,4 +8,6 @@ Firmly changes HP business laptops' battery charge settings from Windows. It run
 
 These test builds are signed with a self-signed certificate. The installer adds that certificate to the computer's Trusted People, so Windows accepts the package. Windows may warn about Install.cmd because it comes from the internet.
 
+**Smart App Control:** if it's on (Windows Security > App & browser control), Windows blocks these builds even with the certificate installed, and Firmly won't start. Use the Microsoft Store version instead: it's signed by the Store and runs with Smart App Control on. It isn't public yet; once it is, it will be at https://apps.microsoft.com/detail/9N9V9740JP8D.
+
 To uninstall, run `Install.cmd -Uninstall`, or remove Firmly in Settings > Apps.
