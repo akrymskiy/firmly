@@ -26,10 +26,11 @@ internal static class BatteryIconRenderer
 
     // On a 16-unit grid: a horizontal battery with its terminal on the right, and room at the bottom right
     // for a badge (bolt or plug) that overlaps the battery's corner, as in Windows' own battery icon.
-    private static readonly RoundedRect Body = new(0.5, 3.5, 13.25, 11.5, 2);
-    private static readonly RoundedRect BodyInside = new(1.75, 4.75, 12, 10.25, 0.9);
-    private static readonly RoundedRect Terminal = new(13.25, 5.75, 15, 9.25, 0.75);
-    private const double FillLeft = 2.75, FillTop = 5.75, FillRight = 11, FillBottom = 9.25;
+    // The terminal is thin, as in Windows' icon, so the body gets most of the width.
+    private static readonly RoundedRect Body = new(0.5, 3.5, 14, 11.5, 2);
+    private static readonly RoundedRect BodyInside = new(1.75, 4.75, 12.75, 10.25, 0.9);
+    private static readonly RoundedRect Terminal = new(14, 6, 15, 9, 0.4);
+    private const double FillLeft = 2.75, FillTop = 5.75, FillRight = 11.75, FillBottom = 9.25;
     private const double LimitTop = 1, LimitBottom = 3.5;
 
     private static readonly Polygon Bolt = new(
