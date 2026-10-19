@@ -134,6 +134,7 @@ public partial class SettingsViewModel : ObservableObject
 
     private async Task ApplyStartAtSignInAsync(bool on)
     {
+        App.StartupPrompt.Answered();
         var task = await StartupTask.GetAsync(AppSettings.StartupTaskId);
         if (on)
         {

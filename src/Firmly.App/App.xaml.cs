@@ -31,6 +31,9 @@ public partial class App : Application
     /// <summary>The connection to the Firmly service, shared by every page.</summary>
     public static ViewModels.SessionViewModel Session { get; private set; } = null!;
 
+    /// <summary>The one-time question whether to start at sign-in.</summary>
+    public static ViewModels.StartupPromptViewModel StartupPrompt { get; } = new();
+
     /// <summary>
     /// The native window handle (HWND). Use for file pickers,
     /// <c>DataTransferManager</c>, and any WinRT interop that requires
@@ -102,6 +105,7 @@ public partial class App : Application
 
         Session.RefreshCommand.Execute(null);
         Session.StartAutoRefresh();
+        _ = StartupPrompt.CheckAsync();
 
         // Started by clicking a notification while Firmly wasn't running.
         if (activation.Data is Microsoft.Windows.AppNotifications.AppNotificationActivatedEventArgs notification)

@@ -64,6 +64,15 @@
   <data name="Battery_EndNote.Title">
     <value>Your timed full charge has ended</value>
   </data>
+  <data name="Battery_StartupPrompt.Title">
+    <value>Start Firmly when you sign in?</value>
+  </data>
+  <data name="Battery_StartupPrompt.Message">
+    <value>It waits in the notification area, with the battery icon, and tells you when a timed full charge ends. You can change this later in Settings.</value>
+  </data>
+  <data name="Battery_StartupPromptTurnOn.Content">
+    <value>Turn on</value>
+  </data>
   <data name="Battery_ChargeMode.Text">
     <value>Charge mode</value>
   </data>

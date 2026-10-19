@@ -18,6 +18,13 @@ internal static class AppSettings
         set => Values["CloseToTray"] = value;
     }
 
+    /// <summary>Whether to start at sign-in was asked, or settled in Settings, so the Battery page doesn't ask again.</summary>
+    public static bool StartupAsked
+    {
+        get => Values["StartupAsked"] as bool? ?? false;
+        set => Values["StartupAsked"] = value;
+    }
+
     /// <summary>
     /// With a BIOS password, a timed full charge lets the service keep the password until it ends, to switch back by
     /// itself. Off unless turned on: Firmly then asks when it's time.

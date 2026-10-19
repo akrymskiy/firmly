@@ -64,6 +64,18 @@
                 Message="{x:Bind Session.Charge.EndNoteMessage, Mode=OneWay}"
                 CloseButtonCommand="{x:Bind Session.Charge.DismissEndNoteCommand}" />
 
+            <InfoBar
+                x:Uid="Battery_StartupPrompt"
+                Margin="0,12,0,0"
+                IsOpen="{x:Bind StartupPrompt.IsOpen, Mode=OneWay}"
+                Visibility="{x:Bind StartupPrompt.IsOpen, Mode=OneWay}"
+                Severity="Informational"
+                CloseButtonCommand="{x:Bind StartupPrompt.DismissCommand}">
+                <InfoBar.ActionButton>
+                    <Button x:Uid="Battery_StartupPromptTurnOn" Command="{x:Bind StartupPrompt.TurnOnCommand}" />
+                </InfoBar.ActionButton>
+            </InfoBar>
+
             <StackPanel Spacing="4" Visibility="{x:Bind Session.Charge.HasModes, Mode=OneWay}">
                 <TextBlock x:Uid="Battery_ChargeMode" Style="{StaticResource SectionHeaderStyle}" />
                 <Grid Style="{StaticResource CardStyle}">

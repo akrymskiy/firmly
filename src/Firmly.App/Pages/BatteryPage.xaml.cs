@@ -13,6 +13,8 @@ public sealed partial class BatteryPage : Page
 
     public SessionViewModel Session => App.Session;
 
+    public StartupPromptViewModel StartupPrompt => App.StartupPrompt;
+
     // The binding only ever selects the firmware's current mode (one-way), so another selection is the user's pick.
     private void OnModeSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
