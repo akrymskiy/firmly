@@ -6,7 +6,7 @@
     xmlns:vm="using:Firmly.App.ViewModels">
 
     <ScrollViewer>
-        <StackPanel Padding="32,16,32,24" Spacing="4">
+        <StackPanel Padding="24,16,24,24" Spacing="4">
             <Grid Margin="0,0,0,12" ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />

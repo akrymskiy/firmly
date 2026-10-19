@@ -5,7 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <ScrollViewer>
-        <StackPanel Padding="32,16,32,24" Spacing="4">
+        <StackPanel Padding="24,16,24,24" Spacing="4">
             <TextBlock x:Uid="Settings_Title" Margin="0,0,0,12" Style="{StaticResource TitleTextBlockStyle}" />
 
             <TextBlock x:Uid="Settings_General" Style="{StaticResource SectionHeaderStyle}" />

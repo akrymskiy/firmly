@@ -1,6 +1,8 @@
 using Firmly.App.Pages;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.Graphics;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Animation;
 using Windows.System;
@@ -18,6 +20,7 @@ public sealed partial class MainWindow : Window
         SetTitleBar(AppTitleBar);
 
         AppWindow.SetIcon("Assets/AppIcon.ico");
+        OpenCompact();
 
         // Closing keeps Firmly running in the notification area, unless turned off in Settings or exiting.
         AppWindow.Closing += (sender, args) =>
@@ -31,6 +34,19 @@ public sealed partial class MainWindow : Window
         Closed += (_, _) => App.OnMainWindowClosed();
 
         NavView.SelectedItem = NavView.MenuItems[0];
+    }
+
+    // In view pixels: enough for the pages without the empty space of Windows' default size.
+    private const int OpenWidth = 760, OpenHeight = 680;
+
+    /// <summary>Sizes the window for its pages, within the screen's work area, and centres it there.</summary>
+    private void OpenCompact()
+    {
+        var scale = Tray.NativeMethods.GetDpiForWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)) / 96.0;
+        var area = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary).WorkArea;
+        var width = Math.Min((int)(OpenWidth * scale), area.Width);
+        var height = Math.Min((int)(OpenHeight * scale), area.Height);
+        AppWindow.MoveAndResize(new RectInt32(area.X + (area.Width - width) / 2, area.Y + (area.Height - height) / 2, width, height));
     }
 
     public void ShowSettings() => NavView.SelectedItem = NavView.SettingsItem;

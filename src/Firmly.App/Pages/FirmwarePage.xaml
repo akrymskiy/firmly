@@ -9,7 +9,7 @@
     xmlns:vm="using:Firmly.App.ViewModels"
     mc:Ignorable="d">
 
-    <Grid Padding="32,16,32,24" RowSpacing="16">
+    <Grid Padding="24,16,24,24" RowSpacing="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />

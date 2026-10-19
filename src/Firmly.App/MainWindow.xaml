@@ -39,7 +39,8 @@
             IsBackButtonVisible="Collapsed"
             IsPaneToggleButtonVisible="False"
             IsSettingsVisible="True"
-            OpenPaneLength="240"
+            OpenPaneLength="152"
+            ExpandedModeThresholdWidth="720"
             SelectionChanged="OnNavigationSelectionChanged">
             <NavigationView.MenuItems>
                 <NavigationViewItem x:Uid="Main_Battery" Tag="BatteryPage">
