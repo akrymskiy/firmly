@@ -97,3 +97,15 @@ Firmly declares `runFullTrust`, `packagedServices` and `localSystemServices`. Pa
 > To check the app on any PC: start Firmly from the Start menu. The Battery page shows the battery charge (or that there's no battery), Settings shows the app and service versions, and the Firmly service appears in services.msc as "Firmly", running as LocalSystem. Closing the window keeps Firmly in the notification area; right-click its icon and choose Exit to quit.
 >
 > No account, sign-in or test credentials are needed.
+
+## Updates
+
+Each release goes to the Store as an update of the existing submission. Firmly's Store ID is `9N9V9740JP8D`; its Partner Center page is https://partner.microsoft.com/dashboard/products/9N9V9740JP8D/overview.
+
+1. Push a `v*` tag. When the Release run finishes, download its **Firmly_Store** artifact and unzip it to get `Firmly_<version>.msixupload`.
+2. On the product page, click **Start update**. The new submission starts as a copy of the last one: listing, screenshots, age rating, restricted-capability reasons and audience.
+3. **Packages:** drop in the new `.msixupload`, wait until it's validated, and remove the previous package so only the new version ships. The workflow numbers packages `MAJOR.MINOR.<run>.0`, so each release's version is higher.
+4. **Store listing > English:** fill in "What's new in this version" with a line or two from the release notes.
+5. Check the submission overview, then **Submit to the Store**. Installed copies update through the Store once the update is certified.
+
+The package is over 10 MB, which is too big for Claude's browser upload, so step 3's upload is done by hand.
