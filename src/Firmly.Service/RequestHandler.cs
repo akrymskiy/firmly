@@ -192,8 +192,11 @@ internal sealed class RequestHandler(
                 return;
             }
 
-            var password = KeptPassword(current);
-            if (password is null && IsBiosPasswordSet(gateway))
+            // A kept password whose BIOS no longer has one (removed in the BIOS setup) isn't sent: the firmware might
+            // count it as a wrong one.
+            var passwordSet = IsBiosPasswordSet(gateway);
+            var password = passwordSet ? KeptPassword(current) : null;
+            if (password is null && passwordSet)
             {
                 _waitingForPassword = true;
                 logger.LogInformation("The timed '{Mode}' has ended; switching back to '{Restore}' needs the BIOS password, which Firmly will ask for.",

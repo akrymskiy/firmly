@@ -142,6 +142,45 @@ public sealed class BiosPasswordTests : IDisposable
     }
 
     [Fact]
+    public async Task KeptPassword_RemovedInTheBiosSince_SwitchesBackWithoutIt()
+    {
+        var handler = CreateHandler();
+        await handler.HandleAsync(Override(Password, keep: true), User, "test", Ct);
+        _provider.BiosPassword = null;
+
+        _time.Advance(TimeSpan.FromDays(1));
+        await handler.CheckChargeOverrideAsync(Ct);
+
+        Assert.Equal(Maximize, CurrentValue);
+        Assert.Null(_provider.Writes[^1].Password);
+        Assert.False(File.Exists(StorePath));
+    }
+
+    [Fact]
+    public async Task OverrideStartedWithoutAPassword_SetInTheBiosSince_WaitsForIt_WithoutTrying()
+    {
+        _provider.BiosPassword = null;
+        var handler = CreateHandler();
+        await handler.HandleAsync(Override(null), User, "test", Ct);
+        _provider.BiosPassword = Password;
+        var writes = _provider.Writes.Count;
+
+        _time.Advance(TimeSpan.FromDays(1));
+        await handler.CheckChargeOverrideAsync(Ct);
+        _time.Advance(TimeSpan.FromHours(1));
+        await handler.CheckChargeOverrideAsync(Ct);
+
+        Assert.Equal(writes, _provider.Writes.Count);
+        Assert.Equal(Minimize, CurrentValue);
+        Assert.True((await handler.HandleAsync(new(IpcCommand.GetSettings), User, "test", Ct)).ChargeOverride!.WaitingForPassword);
+
+        // "Switch back now", once Firmly has asked for the password.
+        var response = await handler.HandleAsync(new(IpcCommand.CancelChargeOverride, BiosPassword: Password), User, "test", Ct);
+        Assert.Equal(IpcError.None, response.Error);
+        Assert.Equal(Maximize, CurrentValue);
+    }
+
+    [Fact]
     public async Task KeptPasswordThatStoppedWorking_IsForgotten_AndTriedOnce()
     {
         var handler = CreateHandler();
