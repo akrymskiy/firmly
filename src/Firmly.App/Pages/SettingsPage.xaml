@@ -71,7 +71,7 @@
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock x:Uid="Settings_BiosPassword" />
                         <TextBlock
-                            x:Uid="Settings_BiosPasswordExplanation"
+                            Text="{x:Bind ViewModel.BiosPasswordExplanation, Mode=OneWay}"
                             Style="{StaticResource CaptionTextBlockStyle}"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             TextWrapping="Wrap" />
@@ -88,7 +88,10 @@
                         Visibility="{x:Bind ViewModel.HasSavedPassword, Mode=OneWay}"
                         Command="{x:Bind ViewModel.ForgetPasswordCommand}" />
                 </Grid>
-                <Grid Style="{StaticResource CardStyle}" ColumnSpacing="16">
+                <Grid
+                    Style="{StaticResource CardStyle}"
+                    ColumnSpacing="16"
+                    Visibility="{x:Bind ViewModel.BiosPasswordSet, Mode=OneWay}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />

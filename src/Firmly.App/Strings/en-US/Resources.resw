@@ -148,9 +148,6 @@
   <data name="Settings_BiosPassword.Text">
     <value>BIOS administrator password</value>
   </data>
-  <data name="Settings_BiosPasswordExplanation.Text">
-    <value>This PC's BIOS has one, so Firmly asks for it before changing settings.</value>
-  </data>
   <data name="Settings_Forget.Content">
     <value>Forget</value>
   </data>
@@ -430,6 +427,12 @@
   </data>
   <data name="Settings_PasswordNotSaved">
     <value>Not saved. To save it, choose “Remember it” when Firmly asks for it.</value>
+  </data>
+  <data name="Settings_PasswordGone">
+    <value>This PC's BIOS no longer has one, so Firmly doesn't need it. You can forget the saved one.</value>
+  </data>
+  <data name="Settings_PasswordInUse">
+    <value>This PC's BIOS has one, so Firmly asks for it before changing settings.</value>
   </data>
   <data name="Settings_PasswordSaved">
     <value>Saved on this PC, unlocked with Windows Hello.</value>

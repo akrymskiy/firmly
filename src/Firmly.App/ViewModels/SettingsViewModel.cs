@@ -30,6 +30,8 @@ public partial class SettingsViewModel : ObservableObject
         if (e.PropertyName is nameof(SessionViewModel.BiosPasswordSet) or nameof(SessionViewModel.AllowSavedBiosPassword))
         {
             OnPropertyChanged(nameof(ShowsBiosPassword));
+            OnPropertyChanged(nameof(BiosPasswordSet));
+            OnPropertyChanged(nameof(BiosPasswordExplanation));
             OnPropertyChanged(nameof(AllowSavedPassword));
             OnPropertyChanged(nameof(SavedPasswordText));
         }
@@ -41,6 +43,12 @@ public partial class SettingsViewModel : ObservableObject
 
     /// <summary>Shown when the BIOS has an administrator password, or one is still saved from before.</summary>
     public bool ShowsBiosPassword => _session.BiosPasswordSet || HasSavedPassword;
+
+    public bool BiosPasswordSet => _session.BiosPasswordSet;
+
+    /// <summary>Why the section is there: the BIOS has a password, or it's gone but one is still saved.</summary>
+    public string BiosPasswordExplanation =>
+        Text.Get(_session.BiosPasswordSet ? "Settings_PasswordInUse" : "Settings_PasswordGone");
 
     public bool AllowSavedPassword => _session.AllowSavedBiosPassword;
 
