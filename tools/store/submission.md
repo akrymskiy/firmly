@@ -57,7 +57,7 @@ Answer the questionnaire as a **utility** app. It has no violence, sexual conten
 >
 > Firmly collects no data and shows no ads. The source code is at github.com/akrymskiy/firmly.
 >
-> Firmly currently supports HP business notebooks. Support for other brands may follow. Follow the project on GitHub.
+> Firmly currently supports HP business notebooks. Support for other brands is in progress. Follow the project on GitHub.
 >
 > Firmly is an independent project, not affiliated with or endorsed by HP Inc. HP, EliteBook, ProBook, ZBook and Dragonfly are trademarks of HP Inc.
 

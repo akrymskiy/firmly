@@ -2,7 +2,7 @@
 
 A lightweight, open-source power and firmware settings app for Windows business notebooks — a small alternative to bulky vendor utilities.
 
-> **Status:** preview. Test builds are on the [Releases](https://github.com/akrymskiy/firmly/releases) page; a Microsoft Store release is in the works.
+> **Status:** early release. Get it from the [Microsoft Store](https://apps.microsoft.com/detail/9N9V9740JP8D); builds are also on the [Releases](https://github.com/akrymskiy/firmly/releases) page.
 
 ## Features
 
@@ -15,7 +15,7 @@ For HP business notebooks (EliteBook, ProBook, ZBook, Dragonfly and similar):
 
 ## Plans
 
-- Other brands' business notebooks, such as Lenovo ThinkPad and Dell Latitude
+- Other brands (in progress), such as Dell, Lenovo and ASUS
 - More HP settings and device controls
 - Translations
 
