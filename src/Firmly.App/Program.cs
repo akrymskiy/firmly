@@ -29,7 +29,12 @@ public static class Program
         var main = AppInstance.FindOrRegisterForKey("main");
         if (main.IsCurrent)
         {
-            main.Activated += (_, _) => App.DispatcherQueue?.TryEnqueue(App.ShowMainWindow);
+            // The sign-in start can come after the user already opened Firmly; it shouldn't bring the window back.
+            main.Activated += (_, e) =>
+            {
+                if (e.Kind != ExtendedActivationKind.StartupTask)
+                    App.DispatcherQueue?.TryEnqueue(App.ShowMainWindow);
+            };
             // Before anything reads the activation: when a notification click starts Firmly, the Windows App SDK fails
             // fast in GetActivatedEventArgs unless the notification COM class is registered by then.
             Notifications.Register();
