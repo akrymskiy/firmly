@@ -27,7 +27,6 @@ internal sealed unsafe class TrayIcon : IDisposable
     private readonly uint _taskbarCreated = RegisterWindowMessage("TaskbarCreated");
     private nint _icon;
     private string _tip = "";
-    private bool _added;
 
     public TrayIcon()
     {
@@ -70,12 +69,10 @@ internal sealed unsafe class TrayIcon : IDisposable
     {
         _icon = icon;
         _tip = tip;
-        if (!_added)
-        {
-            Add();
-            return;
-        }
 
+        // Modify even when adding seemed to fail: Shell_NotifyIcon also fails when Explorer is too slow to answer,
+        // e.g. around Modern Standby, though the icon is there. Adding it again would then fail every time, leaving
+        // the icon stuck on what it showed before.
         var data = NewData(NIF_ICON | NIF_TIP | NIF_SHOWTIP);
         if (!Shell_NotifyIcon(NIM_MODIFY, &data))
             Add();
@@ -112,12 +109,9 @@ internal sealed unsafe class TrayIcon : IDisposable
 
     public void Dispose()
     {
-        if (_added)
-        {
-            var data = NewData(0);
-            Shell_NotifyIcon(NIM_DELETE, &data);
-            _added = false;
-        }
+        // Even when adding seemed to fail: the icon may be there all the same.
+        var data = NewData(0);
+        Shell_NotifyIcon(NIM_DELETE, &data);
         DestroyWindow(_hwnd);
         if (s_current == this)
             s_current = null;
@@ -136,11 +130,10 @@ internal sealed unsafe class TrayIcon : IDisposable
     private void Add()
     {
         var data = NewData(NIF_MESSAGE | NIF_ICON | NIF_TIP | NIF_SHOWTIP);
-        _added = Shell_NotifyIcon(NIM_ADD, &data);
-        if (!_added)
-            return;
+        Shell_NotifyIcon(NIM_ADD, &data);
 
-        // Version 4: one message per click or key, with the anchor point for the menu.
+        // Version 4: one message per click or key, with the anchor point for the menu. Set even when adding seemed
+        // to fail, in case Explorer added the icon after all.
         data.uVersion = NOTIFYICON_VERSION_4;
         Shell_NotifyIcon(NIM_SETVERSION, &data);
     }
@@ -216,10 +209,7 @@ internal sealed unsafe class TrayIcon : IDisposable
                 }
 
                 if (message == icon._taskbarCreated && icon._taskbarCreated != 0)
-                {
-                    icon._added = false;
                     icon.Add();
-                }
             }
         }
         catch (Exception ex)
