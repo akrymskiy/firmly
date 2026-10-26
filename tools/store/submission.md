@@ -27,7 +27,7 @@ Upload `Firmly_<version>.msixupload` from the release run's **Firmly_Store** art
 - **Category:** Utilities & tools.
 - **Privacy policy URL:** https://github.com/akrymskiy/firmly/blob/main/docs/privacy.md
 - **Website:** https://github.com/akrymskiy/firmly
-- **Support contact:** https://github.com/akrymskiy/firmly/issues
+- **Support contact:** firmly.dev@outlook.com, under Support info > **Use different details for this app**. Certification wants a contact that works without an account, so not the GitHub issues page.
 - **Product declarations:** none apply. Firmly has no in-app purchases, collects no personal information, and doesn't depend on Microsoft account sign-in.
 - **System requirements:** Windows 10 version 2004 (build 19041) or later, x64 or ARM64. Needs an HP business notebook (EliteBook, ProBook, ZBook, Dragonfly and similar) for the battery settings. Elsewhere it starts but has nothing to change.
 
@@ -80,15 +80,31 @@ Answer the questionnaire as a **utility** app. It has no violence, sexual conten
 
 ### Restricted capabilities
 
-Firmly declares `runFullTrust`, `packagedServices` and `localSystemServices`. Paste this as the reason:
+Firmly declares `runFullTrust`, `packagedServices` and `localSystemServices`. Partner Center asks for a reason for each. Submission 4 (0.2.0) was denied `packagedServices` and `localSystemServices` under 10.6.3 with the shorter reason this replaced, and certification asked for "new or expanded information" and a support contact (see Properties). Paste these:
 
-> Firmly is a desktop (full trust) app for the battery charge settings in HP business notebooks' BIOS. HP exposes those settings only through WMI classes in root\HP\InstrumentedBIOS, which require administrator rights even to read. Rather than running the app elevated, Firmly's package installs one Windows service (packagedServices, localSystemServices), the only component that touches the firmware.
+**runFullTrust**
+
+> Firmly is a WinUI 3 desktop app (Windows App SDK), packaged as MSIX. It runs as a full trust desktop process, as every WinUI 3 desktop app does, to show its window and notification area icon. The app itself never runs elevated and never touches the firmware; that is the service's job (see packagedServices).
+
+**packagedServices**
+
+> Firmly changes the battery charge settings in HP business notebooks' BIOS: stop charging at 80%, charge fully, or charge to 100% until a set time. HP exposes these settings only through the WMI provider in root\HP\InstrumentedBIOS, which accepts calls only from administrators and LocalSystem, even to read.
 >
-> The service is deliberately narrow. It accepts a short, fixed command set over a named pipe and never passes WMI queries or arbitrary values from the app. Only allowlisted settings can be read or changed, and only to values the firmware offers. Standard users can change power and charging settings only, as with Windows' power options; anything else needs an administrator, and a machine policy can restrict all changes to administrators. The service checks who is calling, limits how often firmware may be written, and logs refused changes and errors to the Windows event log.
+> We considered the alternatives. Running the app elevated, or asking for elevation (UAC) on each change, doesn't work: most users of business notebooks are standard users with no administrator password, and a timed "charge to 100% until Friday" must switch back on schedule when no one is signed in, after a restart, or at the sign-in screen. So the package installs one Windows service, the only component that talks to the firmware. Packaging it (rather than installing it with a separate installer) means it's installed, updated and removed with the app, and signed by the Store.
 >
-> The app itself never runs elevated. The service runs as LocalSystem because the firmware interface requires it, and because it must switch a timed charge back on schedule when no one is signed in.
+> The service is deliberately narrow:
+> - It accepts a short, fixed command set over one local named pipe. It never runs WMI queries or values from the app; only an allowlist of HP battery and power settings can be read or changed, and only to values the firmware itself offers.
+> - The pipe allows only signed-in (interactive) users and denies network logons. The service identifies each caller without impersonating it: standard users can change the charging mode only, as in Windows' own power options; anything else needs an administrator, and a machine policy can restrict all changes to administrators.
+> - Firmware writes are capped machine-wide (a burst of 10, then one every 30 seconds) so nothing can wear the BIOS flash by writing in a loop. Refused requests and errors go to the Windows event log.
+> - It has no network code, no driver, and touches no other WMI namespace or system setting.
 >
-> Source code: https://github.com/akrymskiy/firmly
+> Firmly is open source, so all of this can be checked: https://github.com/akrymskiy/firmly (the service is in src/Firmly.Service). Questions about this submission: firmly.dev@outlook.com.
+
+**localSystemServices**
+
+> The service (see packagedServices) runs as LocalSystem because HP's BIOS WMI provider in root\HP\InstrumentedBIOS accepts calls only from administrators and LocalSystem; LocalService and NetworkService get access denied. A service can't use an administrator's account without storing that account's password, so LocalSystem is the only account that works for every user, including standard users and the times no one is signed in (switching a timed charge back on schedule).
+>
+> The service's reach is limited to an allowlist of HP battery and power settings, through a local named pipe that denies network logons, with every caller identified and firmware writes rate-limited. It has no network code. Source: https://github.com/akrymskiy/firmly (src/Firmly.Service). Contact: firmly.dev@outlook.com.
 
 ### Notes for certification
 
