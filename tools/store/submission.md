@@ -80,7 +80,9 @@ Answer the questionnaire as a **utility** app. It has no violence, sexual conten
 
 ### Restricted capabilities
 
-Firmly declares `runFullTrust`, `packagedServices` and `localSystemServices`. Partner Center asks for a reason for each. Submission 4 (0.2.0) was denied `packagedServices` and `localSystemServices` under 10.6.3 with the shorter reason this replaced, and certification asked for "new or expanded information" and a support contact (see Properties). Paste these:
+Firmly declares `runFullTrust`, `packagedServices` and `localSystemServices`. Partner Center asks for a reason for each. Submission 4 (0.2.0) was denied `packagedServices` and `localSystemServices` under 10.6.3 with the shorter reason this replaced, and certification asked for "new or expanded information" and a support contact (see Properties).
+
+Each reason box takes at most 500 characters, so these are short and point to the full reasons in the notes for certification below. Paste these:
 
 **runFullTrust**
 
@@ -88,9 +90,27 @@ Firmly declares `runFullTrust`, `packagedServices` and `localSystemServices`. Pa
 
 **packagedServices**
 
+> HP's BIOS battery settings are only reachable via WMI in root\HP\InstrumentedBIOS, which needs admin rights even to read. UAC per change fails for standard users and for timed charges that must revert when no one is signed in, so one packaged service is the only part that touches firmware. It takes a fixed command set over a local pipe (network logons denied), changes only allowlisted settings, rate-limits writes, has no network code. Details in Notes for certification. firmly.dev@outlook.com
+
+**localSystemServices**
+
+> HP's BIOS WMI provider accepts calls only from administrators and LocalSystem; LocalService and NetworkService are denied. A service can't run as an admin account without storing its password, so LocalSystem is the only account that works for standard users and when no one is signed in (reverting a timed charge on schedule). Its reach: allowlisted HP battery settings via a local pipe, no network code. Source: github.com/akrymskiy/firmly (src/Firmly.Service). firmly.dev@outlook.com
+
+### Notes for certification
+
+Under Supplemental info > **Additional Testing Information** (up to 6000 characters; it belongs to the product, not to one submission):
+
+> Firmly's battery features need an HP business notebook (EliteBook, ProBook, ZBook, Dragonfly). On other PCs and in virtual machines, Firmly starts normally and shows "This device's firmware isn't supported yet" on the Battery page. That's expected: it then has nothing to change, and it changes nothing.
+>
+> To check the app on any PC: start Firmly from the Start menu. The Battery page shows the battery charge (or that there's no battery), Settings shows the app and service versions, and the Firmly service appears in services.msc as "Firmly", running as LocalSystem. Closing the window keeps Firmly in the notification area; right-click its icon and choose Exit to quit.
+>
+> No account, sign-in or test credentials are needed.
+>
+> RESTRICTED CAPABILITIES (packagedServices, localSystemServices): fuller reasons than fit in Submission options. Questions: firmly.dev@outlook.com
+>
 > Firmly changes the battery charge settings in HP business notebooks' BIOS: stop charging at 80%, charge fully, or charge to 100% until a set time. HP exposes these settings only through the WMI provider in root\HP\InstrumentedBIOS, which accepts calls only from administrators and LocalSystem, even to read.
 >
-> We considered the alternatives. Running the app elevated, or asking for elevation (UAC) on each change, doesn't work: most users of business notebooks are standard users with no administrator password, and a timed "charge to 100% until Friday" must switch back on schedule when no one is signed in, after a restart, or at the sign-in screen. So the package installs one Windows service, the only component that talks to the firmware. Packaging it (rather than installing it with a separate installer) means it's installed, updated and removed with the app, and signed by the Store.
+> We considered the alternatives. Running the app elevated, or asking for elevation (UAC) on each change, doesn't work: most users of business notebooks are standard users with no administrator password, and a timed "charge to 100% until Friday" must switch back on schedule when no one is signed in, after a restart, or at the sign-in screen. So the package installs one Windows service, the only component that talks to the firmware. Packaging it (rather than a separate installer) means it's installed, updated and removed with the app, and signed by the Store. It runs as LocalSystem because LocalService and NetworkService get access denied from HP's provider, and a service can't use an administrator's account without storing that account's password.
 >
 > The service is deliberately narrow:
 > - It accepts a short, fixed command set over one local named pipe. It never runs WMI queries or values from the app; only an allowlist of HP battery and power settings can be read or changed, and only to values the firmware itself offers.
@@ -98,21 +118,7 @@ Firmly declares `runFullTrust`, `packagedServices` and `localSystemServices`. Pa
 > - Firmware writes are capped machine-wide (a burst of 10, then one every 30 seconds) so nothing can wear the BIOS flash by writing in a loop. Refused requests and errors go to the Windows event log.
 > - It has no network code, no driver, and touches no other WMI namespace or system setting.
 >
-> Firmly is open source, so all of this can be checked: https://github.com/akrymskiy/firmly (the service is in src/Firmly.Service). Questions about this submission: firmly.dev@outlook.com.
-
-**localSystemServices**
-
-> The service (see packagedServices) runs as LocalSystem because HP's BIOS WMI provider in root\HP\InstrumentedBIOS accepts calls only from administrators and LocalSystem; LocalService and NetworkService get access denied. A service can't use an administrator's account without storing that account's password, so LocalSystem is the only account that works for every user, including standard users and the times no one is signed in (switching a timed charge back on schedule).
->
-> The service's reach is limited to an allowlist of HP battery and power settings, through a local named pipe that denies network logons, with every caller identified and firmware writes rate-limited. It has no network code. Source: https://github.com/akrymskiy/firmly (src/Firmly.Service). Contact: firmly.dev@outlook.com.
-
-### Notes for certification
-
-> Firmly's battery features need an HP business notebook (EliteBook, ProBook, ZBook, Dragonfly). On other PCs and in virtual machines, Firmly starts normally and shows "This device's firmware isn't supported yet" on the Battery page. That's expected: it then has nothing to change, and it changes nothing.
->
-> To check the app on any PC: start Firmly from the Start menu. The Battery page shows the battery charge (or that there's no battery), Settings shows the app and service versions, and the Firmly service appears in services.msc as "Firmly", running as LocalSystem. Closing the window keeps Firmly in the notification area; right-click its icon and choose Exit to quit.
->
-> No account, sign-in or test credentials are needed.
+> Firmly is open source, so all of this can be checked: https://github.com/akrymskiy/firmly (the service is in src/Firmly.Service).
 
 ## Updates
 
