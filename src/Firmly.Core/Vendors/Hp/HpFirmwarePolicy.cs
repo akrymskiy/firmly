@@ -13,7 +13,6 @@ public static class HpFirmwarePolicy
             // Read-only; firmware enables it when Battery Health Manager is "Let HP Manage My Battery Health".
             "Adaptive Battery Optimizer",
             "Adaptive Battery Optimizer Status",
-            "Fast Charge",
             "Product Name",
             "System BIOS Version",
         ],
@@ -21,6 +20,8 @@ public static class HpFirmwarePolicy
         writable:
         [
             "Battery Health Manager",
+            // Off charges more slowly, which is gentler on the battery.
+            "Fast Charge",
         ],
         // Settings that affect other users or device security posture.
         adminWritable:

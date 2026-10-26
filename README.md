@@ -11,7 +11,7 @@ For HP business notebooks (EliteBook, ProBook, ZBook, Dragonfly and similar):
 - Battery charge modes (HP Battery Health Manager) from the notification area, with the battery's real charge when HP limits charging to 80%
 - [Timed full charge](docs/timed-full-charge.md): 100% for a while, then back to your usual mode by itself
 - Works with a BIOS administrator password, which it can keep, unlocked with Windows Hello
-- A curated view of other BIOS settings
+- Fast Charge on or off, and a curated view of other BIOS settings
 
 ## Plans
 
